@@ -5,6 +5,8 @@
  * Provides a structured view of the user's development environment.
  */
 
+import type { DetectedTool } from './doctor-result.js';
+
 /**
  * Comprehensive snapshot of the current system.
  */
@@ -20,6 +22,9 @@ export interface SystemInfo {
 
   /** Runtime environment details */
   runtime: RuntimeInfo;
+
+  /** Detected development tools */
+  tools: DetectedTool[];
 }
 
 export interface OsInfo {

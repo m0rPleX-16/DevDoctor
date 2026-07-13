@@ -18,6 +18,7 @@
 import os from 'node:os';
 import type { SystemInfo } from '../../core/types/system-info.js';
 import { runCommand } from '../os/command-runner.js';
+import { detectTools } from './tool-detector.js';
 
 /**
  * Human-readable OS name mapping.
@@ -83,7 +84,7 @@ export function formatUptime(seconds: number): string {
 /**
  * Collect comprehensive system information.
  *
- * @returns A SystemInfo object with OS, CPU, memory, and runtime details
+ * @returns A SystemInfo object with OS, CPU, memory, runtime, and tool details
  */
 export async function collectSystemInfo(): Promise<SystemInfo> {
   const platform = os.platform();
@@ -93,12 +94,13 @@ export async function collectSystemInfo(): Promise<SystemInfo> {
   const usedMem = totalMem - freeMem;
   const cpus = os.cpus();
 
-  // Get npm version (may not be installed)
-  let npmVersion: string | undefined;
-  const npmResult = await runCommand('npm', ['--version']);
-  if (npmResult.success) {
-    npmVersion = npmResult.stdout;
-  }
+  // Run npm version check and tool detection concurrently
+  const [npmResult, tools] = await Promise.all([
+    runCommand('npm', ['--version']),
+    detectTools(),
+  ]);
+
+  const npmVersion = npmResult.success ? npmResult.stdout : undefined;
 
   return {
     os: {
@@ -124,5 +126,7 @@ export async function collectSystemInfo(): Promise<SystemInfo> {
       cwd: process.cwd(),
       homeDir: os.homedir(),
     },
+    tools,
   };
 }
+

@@ -44,8 +44,14 @@ npx tsx src/cli/index.ts diagnose node
 # Diagnose with detailed educational explanations
 npx tsx src/cli/index.ts diagnose node --verbose
 
-# Display system information
+# Display system information (includes detected development tools)
 npx tsx src/cli/index.ts info
+
+# Display development-relevant environment variables and PATH breakdown
+npx tsx src/cli/index.ts env
+
+# Run full health check across all plugins and tools
+npx tsx src/cli/index.ts doctor
 ```
 
 ---
@@ -56,22 +62,36 @@ npx tsx src/cli/index.ts info
 
 Run diagnostic checks for a specific technology.
 
-```
+```text
 Options:
   -v, --verbose    Show detailed explanations for all checks, including passing ones
 ```
 
 **Available plugins:**
 
-| Plugin | Description |
-|--------|-------------|
+| Plugin | Description                                                |
+| :---   | :---                                                       |
 | `node` | Node.js installation, npm availability, PATH configuration |
 
 More plugins (MySQL, Docker, Git, etc.) are planned for future phases.
 
 ### `devdoctor info`
 
-Display system and environment information including OS, CPU, memory usage, and runtime details.
+Display system and environment information including OS, CPU, memory usage, runtime details, and detected development tools.
+
+### `devdoctor env`
+
+Display development-relevant environment variables grouped by category. Performs validation check on each PATH entry to identify missing or invalid directories.
+
+```text
+Options:
+  --all    Show ALL environment variables, not just dev-relevant ones
+  --path   Show only the PATH breakdown
+```
+
+### `devdoctor doctor`
+
+Run a full health check across all registered plugins and scan for installed development tools to produce a unified health dashboard with an overall health score and actionable recommendations.
 
 ---
 
@@ -79,7 +99,7 @@ Display system and environment information including OS, CPU, memory usage, and 
 
 ### `diagnose node`
 
-```
+```text
 Node.js Diagnostics
 
   Status: All checks passed
@@ -104,7 +124,7 @@ Node.js Diagnostics
 
 ### `info`
 
-```
+```text
 Operating System
 
   Platform         Windows 11 (10.0.26200)
@@ -138,15 +158,18 @@ Runtime
 
 Dev Doctor follows **Clean Architecture** with four distinct layers:
 
-```
+```text
 src/
 ├── cli/                     # Presentation Layer
 │   ├── index.ts             #   Composition root / entry point
 │   ├── commands/            #   CLI command definitions
 │   │   ├── diagnose.ts      #     devdoctor diagnose <plugin>
-│   │   └── info.ts          #     devdoctor info
+│   │   ├── info.ts          #     devdoctor info
+│   │   ├── env.ts           #     devdoctor env
+│   │   └── doctor.ts        #     devdoctor doctor
 │   └── ui/                  #   Terminal UI helpers
-│       ├── banner.ts        #     Welcome banner
+│       ├── banner.ts        #     Welcome banner (gradient ASCII art)
+│       ├── formatter.ts     #     UI formatting (progress bars, boxes, theme)
 │       ├── logger.ts        #     Styled logging (chalk)
 │       └── spinner.ts       #     Progress spinner (ora)
 │
@@ -154,7 +177,9 @@ src/
 │   ├── types/               #   Shared domain types
 │   │   ├── diagnostic.ts    #     DiagnosticResult, CheckStatus
 │   │   ├── plugin.ts        #     Plugin interface contract
-│   │   └── system-info.ts   #     SystemInfo types
+│   │   ├── system-info.ts   #     SystemInfo types
+│   │   ├── environment.ts   #     EnvironmentInfo, PathEntry
+│   │   └── doctor-result.ts #     DoctorResult, HealthScore
 │   └── engine/
 │       └── diagnostic-engine.ts  # Orchestrates plugin diagnostics
 │
@@ -169,16 +194,18 @@ src/
 │
 └── infra/                   # Infrastructure Layer
     ├── os/
-    │   └── command-runner.ts #   Safe child_process wrapper
+    │   └── command-runner.ts #   Safe child_process/shell wrapper
     └── system/
-        └── system-info-collector.ts  # OS/CPU/memory info
+        ├── system-info-collector.ts  # OS/CPU/memory info
+        ├── tool-detector.ts          # Scans for 9+ dev tools
+        └── env-scanner.ts            # Parses path & groups variables
 ```
 
 ### Dependency Rule
 
 Dependencies flow **inward** — outer layers depend on inner layers, never the reverse.
 
-```
+```text
 CLI → Plugins → Core ← Infrastructure
 ```
 
@@ -252,26 +279,26 @@ Tests are co-located with the code they test (e.g., `diagnostic-engine.test.ts` 
 
 Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 
-| ADR | Decision |
-|-----|----------|
+| ADR    | Decision                                         |
+| :---  | :---                                             |
 | [0001](docs/adr/0001-use-typescript.md) | Use TypeScript for type safety and learning value |
-| [0002](docs/adr/0002-clean-architecture.md) | Use Clean Architecture with four layers |
-| [0003](docs/adr/0003-plugin-architecture.md) | Plugin system with Strategy + Registry patterns |
+| [0002](docs/adr/0002-clean-architecture.md) | Use Clean Architecture with four layers           |
+| [0003](docs/adr/0003-plugin-architecture.md) | Plugin system with Strategy + Registry patterns   |
 
 ---
 
 ## Roadmap
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 1 | CLI Foundation | ✅ Complete |
-| 2 | System Information | 🔜 Planned |
-| 3 | Diagnostics Engine | 🔜 Planned |
-| 4 | Repair Engine | 🔜 Planned |
-| 5 | Plugin System (dynamic loading) | 🔜 Planned |
-| 6 | Reporting (JSON, Markdown, HTML) | 🔜 Planned |
-| 7 | Configuration (`devdoctor.json`) | 🔜 Planned |
-| 8 | Packaging (standalone executables) | 🔜 Planned |
+| Phase | Focus                           | Status      |
+| :---  | :---                            | :---        |
+| 1     | CLI Foundation                  | ✅ Complete  |
+| 2     | System Information              | ✅ Complete  |
+| 3     | Diagnostics Engine              | 🔜 Planned   |
+| 4     | Repair Engine                   | 🔜 Planned   |
+| 5     | Plugin System (dynamic loading) | 🔜 Planned   |
+| 6     | Reporting (JSON, Markdown, HTML)| 🔜 Planned   |
+| 7     | Configuration (`devdoctor.json`)| 🔜 Planned   |
+| 8     | Packaging (standalone binaries) | 🔜 Planned   |
 
 ---
 

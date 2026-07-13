@@ -28,6 +28,8 @@ import { DiagnosticEngine } from '../core/engine/diagnostic-engine.js';
 import { NodePlugin } from '../plugins/node/index.js';
 import { createDiagnoseCommand } from './commands/diagnose.js';
 import { createInfoCommand } from './commands/info.js';
+import { createEnvCommand } from './commands/env.js';
+import { createDoctorCommand } from './commands/doctor.js';
 
 /**
  * Bootstrap and run the CLI application.
@@ -63,6 +65,8 @@ async function main(): Promise<void> {
   // Register commands
   program.addCommand(createDiagnoseCommand(engine));
   program.addCommand(createInfoCommand());
+  program.addCommand(createEnvCommand());
+  program.addCommand(createDoctorCommand(engine));
 
   // Show banner when no command is specified
   program.action(() => {
