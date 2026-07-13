@@ -392,17 +392,23 @@ The repository includes a GitHub Actions Continuous Integration workflow (`.gith
 For QA engineers, designers, or operations teams who need to verify local configurations, Dev Doctor can be run without setting up a local development environment.
 
 ### Option A: Using Node.js (Easiest)
-If you have Node.js installed on your machine, you can run Dev Doctor instantly using `npx` (which downloads and runs the tool automatically without global installation):
+If you have Node.js installed on your machine, first tell npm to resolve the `@m0rplex-16` scope using the GitHub Packages registry:
+
+```bash
+npm config set @m0rplex-16:registry https://npm.pkg.github.com
+```
+
+Now, you can run Dev Doctor instantly using `npx` (no installation required):
 
 ```bash
 # Run the environment health check
-npx devdoctor doctor
+npx @m0rplex-16/devdoctor doctor
 
 # Run diagnostics for MySQL
-npx devdoctor diagnose mysql
+npx @m0rplex-16/devdoctor diagnose mysql
 
 # Automatically fix database issues
-npx devdoctor fix mysql
+npx @m0rplex-16/devdoctor fix mysql
 ```
 
 ### Option B: Standalone Binaries (No Node.js Required)

@@ -1,7 +1,17 @@
 {
-  "name": "devdoctor",
+  "name": "@m0rplex-16/devdoctor",
   "version": "0.1.0",
   "description": "A plugin-based CLI utility that diagnoses, explains, and safely repairs common development environment issues.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m0rPleX-16/DevDoctor.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "dist/cli/index.js",
   "bin": {
