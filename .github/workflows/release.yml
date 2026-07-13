@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*' # Run whenever a version tag is pushed (e.g. v1.0.0)
+    branches:
+      - main # Tags must originate from main to trigger a release
 
 permissions:
   contents: write # Required to create a release and upload assets
