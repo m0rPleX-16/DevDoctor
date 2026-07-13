@@ -6,17 +6,14 @@
 
 import type { DiagnosticCheck } from '../../../core/types/diagnostic.js';
 import { checkService } from '../../../infra/system/service-checker.js';
-
-// Commonly used database service identifiers
-const COMMON_WINDOWS_SERVICES = ['MySQL80', 'MySQL', 'xamppmysql', 'wampmysqld'];
-const COMMON_UNIX_SERVICES = ['mysql', 'mariadb', 'postgresql']; // PostgreSQL just in case, but let's stick to mysql/mariadb
+import { MYSQL_WINDOWS_SERVICES, MYSQL_UNIX_SERVICES } from '../mysql-constants.js';
 
 /**
  * Checks system service status for MySQL.
  */
 export async function checkMysqlService(): Promise<DiagnosticCheck> {
   const isWindows = process.platform === 'win32';
-  const candidateServices = isWindows ? COMMON_WINDOWS_SERVICES : COMMON_UNIX_SERVICES;
+  const candidateServices = isWindows ? MYSQL_WINDOWS_SERVICES : MYSQL_UNIX_SERVICES;
 
   let installedService: { name: string; status: string; pid?: number } | undefined;
 

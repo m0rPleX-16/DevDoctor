@@ -18,9 +18,11 @@
 
 import type { Plugin } from '../../core/types/plugin.js';
 import type { DiagnosticResult, CheckStatus } from '../../core/types/diagnostic.js';
+import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
 import { checkNodeVersion } from './checks/version-check.js';
 import { checkNpm } from './checks/npm-check.js';
 import { checkNodePath } from './checks/path-check.js';
+import { checkNodePermissions } from './checks/permissions-check.js';
 
 /**
  * Determine the overall status from a list of individual check statuses.
@@ -56,6 +58,7 @@ export class NodePlugin implements Plugin {
       checkNodeVersion(),
       checkNpm(),
       checkNodePath(),
+      checkNodePermissions(),
     ]);
 
     const durationMs = Math.round(performance.now() - startTime);
@@ -67,6 +70,23 @@ export class NodePlugin implements Plugin {
       durationMs,
       checks,
       overallStatus: deriveOverallStatus(checks.map((c) => c.status)),
+    };
+  }
+
+  async repair(checkName: string): Promise<RepairResult> {
+    return {
+      checkName,
+      success: false,
+      message: `NodePlugin does not support automated repairs for "${checkName}".`,
+      rollbackSupported: false,
+    };
+  }
+
+  async verify(checkName: string): Promise<VerificationResult> {
+    return {
+      checkName,
+      success: false,
+      message: `Verification for "${checkName}" is not supported.`,
     };
   }
 }

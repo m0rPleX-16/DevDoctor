@@ -10,7 +10,7 @@ Dev Doctor isn't just another diagnostic tool — it **teaches you** about your 
 
 - **Diagnose** — Run health checks on your development tools (Node.js, npm, and more to come)
 - **Explain** — Understand *why* something is broken, not just *that* it's broken
-- **Repair** — Safely fix common issues with confirmation and rollback *(coming soon)*
+- **Repair** — Safely fix common issues with confirmation and rollback
 - **Report** — Get system information at a glance
 
 ---
@@ -52,6 +52,9 @@ npx tsx src/cli/index.ts env
 
 # Run full health check across all plugins and tools
 npx tsx src/cli/index.ts doctor
+
+# Safely repair issues detected by a plugin
+npx tsx src/cli/index.ts fix mysql
 ```
 
 ---
@@ -93,6 +96,10 @@ Options:
 ### `devdoctor doctor`
 
 Run a full health check across all registered plugins and scan for installed development tools to produce a unified health dashboard with an overall health score and actionable recommendations.
+
+### `devdoctor fix <plugin>`
+
+Safely attempt automated repairs for issues detected by a specific plugin (e.g. starting stopped services, freeing port conflicts). Includes safety confirmations and post-repair verifications.
 
 ---
 
@@ -167,7 +174,8 @@ src/
 │   │   ├── diagnose.ts      #     devdoctor diagnose <plugin>
 │   │   ├── info.ts          #     devdoctor info
 │   │   ├── env.ts           #     devdoctor env
-│   │   └── doctor.ts        #     devdoctor doctor
+│   │   ├── doctor.ts        #     devdoctor doctor
+│   │   └── fix.ts           #     devdoctor fix <plugin>
 │   └── ui/                  #   Terminal UI helpers
 │       ├── banner.ts        #     Welcome banner (gradient ASCII art)
 │       ├── formatter.ts     #     UI formatting (progress bars, boxes, theme)
@@ -180,7 +188,8 @@ src/
 │   │   ├── plugin.ts        #     Plugin interface contract
 │   │   ├── system-info.ts   #     SystemInfo types
 │   │   ├── environment.ts   #     EnvironmentInfo, PathEntry
-│   │   └── doctor-result.ts #     DoctorResult, HealthScore
+│   │   ├── doctor-result.ts #     DoctorResult, HealthScore
+│   │   └── repair.ts        #     RepairResult, VerificationResult
 │   └── engine/
 │       └── diagnostic-engine.ts  # Orchestrates plugin diagnostics
 │
@@ -295,7 +304,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 1     | CLI Foundation                  | ✅ Complete  |
 | 2     | System Information              | ✅ Complete  |
 | 3     | Diagnostics Engine              | ✅ Complete  |
-| 4     | Repair Engine                   | 🔜 Planned   |
+| 4     | Repair Engine                   | ✅ Complete  |
 | 5     | Plugin System (dynamic loading) | 🔜 Planned   |
 | 6     | Reporting (JSON, Markdown, HTML)| 🔜 Planned   |
 | 7     | Configuration (`devdoctor.json`)| 🔜 Planned   |

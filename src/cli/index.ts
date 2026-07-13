@@ -31,6 +31,7 @@ import { createDiagnoseCommand } from './commands/diagnose.js';
 import { createInfoCommand } from './commands/info.js';
 import { createEnvCommand } from './commands/env.js';
 import { createDoctorCommand } from './commands/doctor.js';
+import { createFixCommand } from './commands/fix.js';
 
 /**
  * Bootstrap and run the CLI application.
@@ -69,6 +70,7 @@ async function main(): Promise<void> {
   program.addCommand(createInfoCommand());
   program.addCommand(createEnvCommand());
   program.addCommand(createDoctorCommand(engine));
+  program.addCommand(createFixCommand(registry, engine));
 
   // Show banner when no command is specified
   program.action(() => {

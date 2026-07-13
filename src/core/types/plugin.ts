@@ -17,12 +17,10 @@
  */
 
 import type { DiagnosticResult } from './diagnostic.js';
+import type { RepairResult, VerificationResult } from './repair.js';
 
 /**
  * The contract that every Dev Doctor plugin must implement.
- *
- * Phase 1: diagnose()
- * Phase 4: repair() and verify() will be added
  */
 export interface Plugin {
   /** Unique identifier used in CLI commands (e.g., "node", "mysql") */
@@ -36,14 +34,22 @@ export interface Plugin {
 
   /**
    * Run all diagnostic checks for this technology.
-   *
-   * Each plugin decides what checks are relevant.
-   * For example, the Node.js plugin checks:
-   * - Is Node.js installed?
-   * - Is npm available?
-   * - Is Node.js on the system PATH?
-   *
-   * @returns A structured diagnostic result with all check outcomes
    */
   diagnose(): Promise<DiagnosticResult>;
+
+  /**
+   * Attempt to repair a specific failed check.
+   */
+  repair(checkName: string): Promise<RepairResult>;
+
+  /**
+   * Verify if a check is now passing after a repair.
+   */
+  verify(checkName: string): Promise<VerificationResult>;
+
+  /**
+   * Roll back a repair that succeeded mechanically but whose verification failed.
+   * Only called when RepairResult.rollbackSupported is true.
+   */
+  rollback?(checkName: string): Promise<RepairResult>;
 }

@@ -8,16 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { DiagnosticCheck } from '../../../core/types/diagnostic.js';
 import { parseConfigFile } from '../../../infra/system/config-parser.js';
-
-// Common paths where MySQL config could be located on Windows
-const COMMON_CONFIG_PATHS = [
-  'C:\\xampp\\mysql\\bin\\my.ini',
-  'C:\\ProgramData\\MySQL\\MySQL Server 8.0\\my.ini',
-  'C:\\Program Files\\MySQL\\MySQL Server 8.0\\my.ini',
-  'C:\\Program Files\\MySQL\\MySQL Server 8.4\\my.ini',
-  'C:\\Program Files\\MySQL\\MySQL Server 9.0\\my.ini',
-  'C:\\tools\\mysql\\my.ini',
-];
+import { MYSQL_CONFIG_PATHS_WINDOWS, MYSQL_DEFAULT_PORT } from '../mysql-constants.js';
 
 export interface ConfigCheckResult {
   check: DiagnosticCheck;
@@ -34,7 +25,7 @@ export async function checkMysqlConfig(): Promise<ConfigCheckResult> {
   let foundPath: string | undefined;
 
   // 1. Check common locations
-  for (const p of COMMON_CONFIG_PATHS) {
+  for (const p of MYSQL_CONFIG_PATHS_WINDOWS) {
     if (fs.existsSync(p)) {
       foundPath = p;
       break;
@@ -73,7 +64,7 @@ export async function checkMysqlConfig(): Promise<ConfigCheckResult> {
           'Make sure MySQL is installed. If using a portable stack, configure it ' +
           'such that my.ini resides in the binary folder or ProgramData.',
       },
-      port: 3306, // Fallback default
+      port: MYSQL_DEFAULT_PORT,
     };
   }
 
@@ -81,7 +72,7 @@ export async function checkMysqlConfig(): Promise<ConfigCheckResult> {
   const mysqldSection = config.mysqld ?? {};
 
   // Extract port configuration
-  let port = 3306;
+  let port = MYSQL_DEFAULT_PORT;
   if (mysqldSection.port) {
     const parsedPort = parseInt(mysqldSection.port, 10);
     if (!isNaN(parsedPort)) {
