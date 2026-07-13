@@ -280,20 +280,27 @@ export class YourPlugin implements Plugin {
 Dev Doctor includes advanced configurations, dynamic plugin loading, multi-format reporting, and binary packaging:
 
 ### Dynamic Plugin System & DI
+
 Rather than manually importing and registering plugins inside the CLI entry point, Dev Doctor dynamically scans the `./plugins/` directory at startup:
+
 - **Dynamic Imports**: Uses Node's dynamic `import()` to find directories with `index.js` files, load classes conforming to `Plugin`, and auto-register them.
 - **Dependency Injection**: A lightweight DI container maps infrastructure tools (e.g. `CommandRunner`, `ConfigParser`) directly into plugin constructors, decoupling them further.
 
 ### Reporting Engine
+
 A unified reporting facade exports diagnostic outcomes to files:
+
 - **Interface**: `Reporter` contract defining `generate(results: DiagnosticResult[]): string`.
 - **Implementations**:
   - `JsonRenderer`: Exports structured machine-readable logs.
   - `MarkdownRenderer`: Creates clean wiki-friendly tables and code summaries.
 
 ### Configuration (`devdoctor.json`)
+
 Allows custom overrides of default service boundaries.
+
 - **Schema**:
+
   ```json
   {
     "defaultFormat": "terminal | json | markdown",
@@ -304,12 +311,16 @@ Allows custom overrides of default service boundaries.
     }
   }
   ```
+
 - Dev Doctor will parse this file at startup to override standard check properties (like the default MySQL port).
 
 ### Compilation
+
 Compiles standard Node.js/TypeScript source into stand-alone system binaries (`.exe` on Windows, native binaries on macOS/Linux) using `@yao-pkg/pkg`:
+
 - Emits portable zero-dependency executables that require no Node.js installation on target client systems.
 - Build commands:
+
   ```bash
   npm run build:binary:win     # Windows binary
   npm run build:binary         # Windows, Linux, and macOS binaries
@@ -376,6 +387,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 ## CI/CD Workflow
 
 The repository includes a GitHub Actions Continuous Integration workflow (`.github/workflows/ci.yml`) that validates changes automatically:
+
 - **Trigger**: Runs on every `push` and `pull_request` targeting the main branches.
 - **Matrix Testing**: Builds and tests on Node versions `18.x`, `20.x`, and `22.x`.
 - **Steps**:
@@ -389,9 +401,10 @@ The repository includes a GitHub Actions Continuous Integration workflow (`.gith
 
 ## Non-Developer Guide
 
-For QA engineers, designers, or operations teams who need to verify local configurations, Dev Doctor can be run without setting up a local development environment.
+For  QA engineers, designers, or operations teams who need to verify local configurations, Dev Doctor can be run without setting up a local development environment.
 
 ### Option A: Using Node.js (Easiest)
+
 If you have Node.js installed on your machine, first tell npm to resolve the `@m0rplex-16` scope using the GitHub Packages registry:
 
 ```bash
@@ -412,6 +425,7 @@ npx @m0rplex-16/devdoctor fix mysql
 ```
 
 ### Option B: Standalone Binaries (No Node.js Required)
+
 If you do not have Node.js installed, you can use the pre-compiled standalone binary for your Operating System:
 
 1. **Navigate to Releases**: Go to the **Releases** section on the right sidebar of the project's GitHub repository page.
@@ -421,11 +435,14 @@ If you do not have Node.js installed, you can use the pre-compiled standalone bi
    - **Linux**: `devdoctor-linux`
 3. **Save and Locate**: Save the file to an accessible folder (e.g. `C:\tools\` or your User folder).
 4. **Grant Execution Permissions (macOS/Linux only)**: Open your Terminal in the folder where the file was saved, and run the following command to allow the system to run it:
+
    ```bash
    chmod +x devdoctor-macos     # On macOS
    chmod +x devdoctor-linux     # On Linux
    ```
+
 5. **Run Commands Directly**: Open your terminal (Command Prompt/PowerShell on Windows, Terminal on macOS/Linux) in the folder where the binary is saved and run:
+
    ```bash
    # Windows Command Prompt / PowerShell
    devdoctor-win.exe doctor
