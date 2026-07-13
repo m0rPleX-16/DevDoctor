@@ -52,4 +52,16 @@ export interface Plugin {
    * Only called when RepairResult.rollbackSupported is true.
    */
   rollback?(checkName: string): Promise<RepairResult>;
+
+  /**
+   * Return whether this plugin supports automated repair for a given check name.
+   *
+   * The fix command uses this to decide whether to offer a repair prompt for
+   * a failed check. If not implemented, the fix command conservatively assumes
+   * the plugin does not support repair for that check.
+   *
+   * This avoids prompting the user for repairs that would always return
+   * "not supported", giving them a cleaner experience.
+   */
+  canRepair?(checkName: string): boolean;
 }

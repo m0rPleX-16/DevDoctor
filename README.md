@@ -8,10 +8,12 @@ Dev Doctor isn't just another diagnostic tool — it **teaches you** about your 
 
 ## Features
 
-- **Diagnose** — Run health checks on your development tools (Node.js, npm, and more to come)
-- **Explain** — Understand *why* something is broken, not just *that* it's broken
-- **Repair** — Safely fix common issues with confirmation and rollback
-- **Report** — Get system information at a glance
+- **Diagnose** — Run health checks on Node.js and MySQL local environments (or custom plugins)
+- **Explain** — Detailed root causes and educational explanations for every check
+- **Repair** — Safe, confirmation-prompted automatic repairs with rollback support
+- **Report** — Generate system health status in terminal, JSON, or Markdown formats
+- **Configuration** — Custom configuration overlays using local `devdoctor.json` files
+- **Extensible** — Dynamic runtime plugin loading directly from filesystem directories
 
 ---
 
@@ -67,7 +69,9 @@ Run diagnostic checks for a specific technology.
 
 ```text
 Options:
-  -v, --verbose    Show detailed explanations for all checks, including passing ones
+  -v, --verbose           Show detailed explanations for all checks, including passing ones
+  --format <json|md|html> Format of the diagnostic report (Phase 6)
+  --output <file>         Output file path to save report to (Phase 6)
 ```
 
 **Available plugins:**
@@ -271,6 +275,48 @@ export class YourPlugin implements Plugin {
 
 ---
 
+## Configuration, Plugins & Packaging
+
+Dev Doctor includes advanced configurations, dynamic plugin loading, multi-format reporting, and binary packaging:
+
+### Dynamic Plugin System & DI
+Rather than manually importing and registering plugins inside the CLI entry point, Dev Doctor dynamically scans the `./plugins/` directory at startup:
+- **Dynamic Imports**: Uses Node's dynamic `import()` to find directories with `index.js` files, load classes conforming to `Plugin`, and auto-register them.
+- **Dependency Injection**: A lightweight DI container maps infrastructure tools (e.g. `CommandRunner`, `ConfigParser`) directly into plugin constructors, decoupling them further.
+
+### Reporting Engine
+A unified reporting facade exports diagnostic outcomes to files:
+- **Interface**: `Reporter` contract defining `generate(results: DiagnosticResult[]): string`.
+- **Implementations**:
+  - `JsonRenderer`: Exports structured machine-readable logs.
+  - `MarkdownRenderer`: Creates clean wiki-friendly tables and code summaries.
+
+### Configuration (`devdoctor.json`)
+Allows custom overrides of default service boundaries.
+- **Schema**:
+  ```json
+  {
+    "defaultFormat": "terminal | json | markdown",
+    "reportOutputDir": "./reports",
+    "plugins": {
+      "mysql": { "disabled": false },
+      "node": { "disabled": false }
+    }
+  }
+  ```
+- Dev Doctor will parse this file at startup to override standard check properties (like the default MySQL port).
+
+### Compilation
+Compiles standard Node.js/TypeScript source into stand-alone system binaries (`.exe` on Windows, native binaries on macOS/Linux) using `@yao-pkg/pkg`:
+- Emits portable zero-dependency executables that require no Node.js installation on target client systems.
+- Build commands:
+  ```bash
+  npm run build:binary:win     # Windows binary
+  npm run build:binary         # Windows, Linux, and macOS binaries
+  ```
+
+---
+
 ## Testing
 
 ```bash
@@ -289,11 +335,16 @@ Tests are co-located with the code they test (e.g., `diagnostic-engine.test.ts` 
 
 Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 
-| ADR    | Decision                                         |
-| :---  | :---                                             |
-| [0001](docs/adr/0001-use-typescript.md) | Use TypeScript for type safety and learning value |
-| [0002](docs/adr/0002-clean-architecture.md) | Use Clean Architecture with four layers           |
-| [0003](docs/adr/0003-plugin-architecture.md) | Plugin system with Strategy + Registry patterns   |
+| ADR    | Decision                                                    |
+| :---  | :---                                                        |
+| [0001](docs/adr/0001-use-typescript.md)          | Use TypeScript for type safety and learning value           |
+| [0002](docs/adr/0002-clean-architecture.md)      | Use Clean Architecture with four layers                     |
+| [0003](docs/adr/0003-plugin-architecture.md)     | Plugin system with Strategy + Registry patterns             |
+| [0004](docs/adr/0004-repair-rollback-strategy.md) | Standardized interactive repair and rollback workflows      |
+| [0005](docs/adr/0005-configuration-system.md)    | Two-tiered configuration resolution system                 |
+| [0006](docs/adr/0006-dynamic-plugin-loading.md)  | Dynamic runtime filesystem plugin loading                   |
+| [0007](docs/adr/0007-reporting-strategy.md)      | Pluggable multi-format reporting renderer pattern          |
+| [0008](docs/adr/0008-packaging.md)               | Portable binary compilation packaging                       |
 
 ---
 
@@ -305,10 +356,10 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 2     | System Information              | ✅ Complete  |
 | 3     | Diagnostics Engine              | ✅ Complete  |
 | 4     | Repair Engine                   | ✅ Complete  |
-| 5     | Plugin System (dynamic loading) | 🔜 Planned   |
-| 6     | Reporting (JSON, Markdown, HTML)| 🔜 Planned   |
-| 7     | Configuration (`devdoctor.json`)| 🔜 Planned   |
-| 8     | Packaging (standalone binaries) | 🔜 Planned   |
+| 5     | Plugin System (dynamic loading) | ✅ Complete  |
+| 6     | Reporting (JSON, Markdown)      | ✅ Complete  |
+| 7     | Configuration (`devdoctor.json`)| ✅ Complete  |
+| 8     | Packaging (standalone binaries) | ✅ Complete  |
 
 ---
 
@@ -319,6 +370,20 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 3. **Transparency** — Show every command being executed
 4. **Extensibility** — Every technology is a plugin; no tech-specific logic in the core
 5. **Cross-Platform** — Architecture avoids platform-specific assumptions
+
+---
+
+## CI/CD Workflow
+
+The repository includes a GitHub Actions Continuous Integration workflow (`.github/workflows/ci.yml`) that validates changes automatically:
+- **Trigger**: Runs on every `push` and `pull_request` targeting the main branches.
+- **Matrix Testing**: Builds and tests on Node versions `18.x`, `20.x`, and `22.x`.
+- **Steps**:
+  1. Clones the code.
+  2. Sets up Node.js with caching enabled.
+  3. Installs dependencies using `npm ci`.
+  4. Builds the project (`npm run build`) to ensure type-checking passes.
+  5. Executes all Vitest test suites (`npm test`).
 
 ---
 

@@ -79,15 +79,16 @@ export function createFixCommand(
 
       const issues = result.checks.filter((c) => c.status === 'fail' || c.status === 'warn');
 
-      // Only offer to repair checks that the plugin actually supports.
-      // A plugin signals support by returning success: true or a meaningful
-      // attempt — we detect capability by checking if repair() returns
-      // rollbackSupported or a non-"not supported" message pattern.
-      // The lighter approach: only show checks where status is 'fail', since
-      // warnings like "log errors found" or "config not found" typically have
-      // no automated fix. Plugins that do support warn-level repair can
-      // override this by implementing a canRepair() method in a future phase.
-      const repairableIssues = issues.filter((c) => c.status === 'fail');
+      // Only offer to repair checks that the plugin explicitly declares support for.
+      // Plugins signal this via the optional canRepair(checkName) method.
+      // Falls back to filtering by 'fail' status only when canRepair is not implemented,
+      // since warnings typically have no safe automated fix.
+      const repairableIssues = issues.filter((c) => {
+        if (plugin.canRepair) {
+          return plugin.canRepair(c.name);
+        }
+        return c.status === 'fail';
+      });
 
       if (issues.length === 0) {
         console.log(`  ${hr(plugin.displayName + ' Repairs', 48)}`);

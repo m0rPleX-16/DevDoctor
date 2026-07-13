@@ -1,60 +1,50 @@
 #!/usr/bin/env node
 
 /**
- * Dev Doctor — CLI Entry Point
+ * Dev Doctor — CLI Entry Point (Composition Root)
  *
- * This is the main entry point for the Dev Doctor CLI application.
- * It bootstraps the application by:
+ * This file wires all concrete implementations together.
+ * It is the only place in the codebase that knows about ALL layers.
  *
- * 1. Creating the plugin registry and registering available plugins
- * 2. Creating the diagnostic engine
- * 3. Setting up Commander with all commands
- * 4. Parsing command-line arguments
- *
- * Architecture note:
- * This file is the "Composition Root" — the place where all the pieces
- * are wired together. It's the only file that knows about ALL concrete
- * implementations. Every other module depends on abstractions (interfaces).
- *
- * This is the Dependency Injection principle at work: dependencies flow
- * inward (from this outer layer to the core), and this file is where
- * concrete implementations are connected to the abstractions they fulfill.
+ * Bootstrap sequence:
+ *   1. Load configuration (Phase 7)
+ *   2. Load and register plugins via PluginLoader (Phase 5)
+ *   3. Create the DiagnosticEngine
+ *   4. Register Commander commands with resolved config injected
+ *   5. Parse and dispatch
  */
 
 import { Command } from 'commander';
 import { showBanner } from './ui/banner.js';
 import { PluginRegistry } from '../plugins/plugin-registry.js';
 import { DiagnosticEngine } from '../core/engine/diagnostic-engine.js';
-import { NodePlugin } from '../plugins/node/index.js';
-import { MysqlPlugin } from '../plugins/mysql/index.js';
+import { loadConfig } from '../infra/config/config-loader.js';
+import { loadPlugins } from '../infra/plugins/plugin-loader.js';
 import { createDiagnoseCommand } from './commands/diagnose.js';
 import { createInfoCommand } from './commands/info.js';
 import { createEnvCommand } from './commands/env.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createFixCommand } from './commands/fix.js';
 
-/**
- * Bootstrap and run the CLI application.
- */
 async function main(): Promise<void> {
-  // ── Step 1: Create the plugin registry and register plugins ──
+  // ── Step 1: Load configuration ──
   //
-  // In Phase 1, plugins are registered manually here.
-  // In Phase 5, this will be replaced with dynamic plugin discovery.
-  const registry = new PluginRegistry();
-  registry.register(new NodePlugin());
-  registry.register(new MysqlPlugin());
+  // Reads devdoctor.json (project) and ~/.devdoctor/config.json (user),
+  // merges them, and applies defaults. Never throws — bad config = defaults.
+  const config = loadConfig();
 
-  // ── Step 2: Create the diagnostic engine ──
+  // ── Step 2: Load plugins ──
   //
-  // The engine is the bridge between the CLI and the plugins.
-  // It knows how to look up plugins and run their diagnostics.
+  // Built-in plugins are always loaded. Dynamic discovery supplements
+  // them with any additional plugins found in the plugins directory.
+  // Plugins listed as disabled in config are skipped.
+  const registry = new PluginRegistry();
+  await loadPlugins(registry, config);
+
+  // ── Step 3: Create the diagnostic engine ──
   const engine = new DiagnosticEngine(registry);
 
-  // ── Step 3: Set up Commander ──
-  //
-  // Commander is a popular library for building CLI applications in Node.js.
-  // It handles argument parsing, help text generation, and command routing.
+  // ── Step 4: Set up Commander ──
   const program = new Command();
 
   program
@@ -65,24 +55,22 @@ async function main(): Promise<void> {
     )
     .version('0.1.0', '-V, --version', 'Display the current version');
 
-  // Register commands
-  program.addCommand(createDiagnoseCommand(engine));
+  // Pass resolved config into commands that need format/output options
+  program.addCommand(createDiagnoseCommand(engine, config));
   program.addCommand(createInfoCommand());
   program.addCommand(createEnvCommand());
-  program.addCommand(createDoctorCommand(engine));
+  program.addCommand(createDoctorCommand(engine, config));
   program.addCommand(createFixCommand(registry, engine));
 
-  // Show banner when no command is specified
   program.action(() => {
     showBanner();
     program.outputHelp();
   });
 
-  // ── Step 4: Parse arguments and execute ──
+  // ── Step 5: Parse and dispatch ──
   await program.parseAsync(process.argv);
 }
 
-// Run the application
 main().catch((error) => {
   console.error('Fatal error:', error);
   process.exitCode = 1;

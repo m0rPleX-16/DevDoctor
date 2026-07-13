@@ -28,3 +28,23 @@ export const MYSQL_CONFIG_PATHS_WINDOWS = [
   'C:\\Program Files\\MySQL\\MySQL Server 9.0\\my.ini',
   'C:\\tools\\mysql\\my.ini',
 ] as const;
+
+/**
+ * Well-known XAMPP MySQL binary locations.
+ * Used when basedir is not set in my.ini.
+ */
+export const XAMPP_MYSQLD_FALLBACK_PATHS = [
+  'C:\\xampp\\mysql\\bin\\mysqld.exe',
+  'C:\\xampp64\\mysql\\bin\\mysqld.exe',
+] as const;
+
+/**
+ * The mysqld.exe process name as seen in Windows tasklist output.
+ * MySQL standalone and XAMPP both use this executable name.
+ */
+export const MYSQLD_PROCESS_NAME_WIN = 'mysqld.exe';
+
+/**
+ * The mysqld process name on Unix.
+ */
+export const MYSQLD_PROCESS_NAME_UNIX = 'mysqld';

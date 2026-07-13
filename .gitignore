@@ -24,3 +24,9 @@ npm-debug.log*
 
 # Coverage
 coverage/
+
+# Packaged binaries (Phase 8)
+binaries/
+
+# User-level devdoctor config (keep project config devdoctor.json tracked)
+# ~/.devdoctor/ is outside the repo — nothing to ignore here

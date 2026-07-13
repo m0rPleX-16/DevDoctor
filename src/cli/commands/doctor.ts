@@ -1,27 +1,21 @@
 /**
  * Doctor Command
  *
- * The `devdoctor doctor` command — a full health dashboard.
+ * The `devdoctor doctor` command — full health dashboard.
  *
- * Runs ALL registered plugin diagnostics plus a tool detection scan,
- * then presents a summary dashboard with:
- * - Per-plugin status table
- * - Detected tools table
- * - Overall health score
- * - Actionable recommendations
- *
- * This is the "big picture" command — while `diagnose` focuses on
- * one technology, `doctor` gives an overview of everything.
+ * Supports --format (terminal|json|markdown) and --output <file>.
  */
 
 import { Command } from 'commander';
 import chalk from 'chalk';
 import type { DiagnosticEngine } from '../../core/engine/diagnostic-engine.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
-import type { DetectedTool, HealthStatus } from '../../core/types/doctor-result.js';
+import type { DetectedTool, HealthStatus, DoctorResult } from '../../core/types/doctor-result.js';
+import type { ReportFormat, ResolvedConfig } from '../../core/types/config.js';
 import { detectTools } from '../../infra/system/tool-detector.js';
 import { showCompactBanner } from '../ui/banner.js';
 import { createSpinner } from '../ui/spinner.js';
+import { createRenderer, writeReport } from '../reporting/renderer-factory.js';
 import {
   theme,
   hr,
@@ -32,7 +26,8 @@ import {
   progressBar,
 } from '../ui/formatter.js';
 
-/** Category display labels */
+// ── Health score ──────────────────────────────────────────────────
+
 const TOOL_CATEGORY_LABELS: Record<DetectedTool['category'], string> = {
   runtime: 'Runtimes',
   'package-manager': 'Package Managers',
@@ -42,61 +37,58 @@ const TOOL_CATEGORY_LABELS: Record<DetectedTool['category'], string> = {
   database: 'Databases',
 };
 
-/**
- * Calculate a simple health score from diagnostic results.
- * Percentage = passed checks / total checks.
- */
 function calculateHealthScore(diagnostics: DiagnosticResult[]) {
-  let total = 0;
-  let passed = 0;
-  let warnings = 0;
-  let failures = 0;
-
-  for (const result of diagnostics) {
-    for (const check of result.checks) {
+  let total = 0, passed = 0, warnings = 0, failures = 0;
+  for (const r of diagnostics) {
+    for (const c of r.checks) {
       total++;
-      if (check.status === 'pass') passed++;
-      else if (check.status === 'warn') warnings++;
-      else if (check.status === 'fail') failures++;
+      if (c.status === 'pass') passed++;
+      else if (c.status === 'warn') warnings++;
+      else if (c.status === 'fail') failures++;
     }
   }
-
   const percentage = total > 0 ? Math.round((passed / total) * 100) : 100;
-  let status: HealthStatus;
-  if (percentage >= 80) status = 'healthy';
-  else if (percentage >= 50) status = 'degraded';
-  else status = 'unhealthy';
-
+  const status: HealthStatus =
+    percentage >= 80 ? 'healthy' : percentage >= 50 ? 'degraded' : 'unhealthy';
   return { percentage, status, totalChecks: total, passedChecks: passed, warningChecks: warnings, failedChecks: failures };
 }
 
-/**
- * Get the display properties for a health status.
- */
 function healthDisplay(status: HealthStatus) {
   switch (status) {
-    case 'healthy':
-      return { label: 'Healthy', icon: '💚', colorFn: theme.success };
-    case 'degraded':
-      return { label: 'Degraded', icon: '💛', colorFn: theme.warning };
-    case 'unhealthy':
-      return { label: 'Unhealthy', icon: '❤️', colorFn: theme.error };
+    case 'healthy':   return { label: 'Healthy',   icon: '💚', colorFn: theme.success };
+    case 'degraded':  return { label: 'Degraded',  icon: '💛', colorFn: theme.warning };
+    case 'unhealthy': return { label: 'Unhealthy', icon: '❤️',  colorFn: theme.error };
   }
 }
 
-/**
- * Create the `doctor` command.
- */
-export function createDoctorCommand(engine: DiagnosticEngine): Command {
+// ── Command factory ───────────────────────────────────────────────
+
+interface DoctorOptions {
+  format?: ReportFormat;
+  output?: string;
+}
+
+export function createDoctorCommand(
+  engine: DiagnosticEngine,
+  config?: ResolvedConfig,
+): Command {
   return new Command('doctor')
     .description('Run a full health check across all plugins and tools.')
-    .action(async () => {
-      showCompactBanner();
+    .option(
+      '-f, --format <format>',
+      'Output format: terminal (default), json, markdown',
+      config?.defaultFormat ?? 'terminal',
+    )
+    .option('-o, --output <file>', 'Write report to a file instead of stdout')
+    .action(async (options: DoctorOptions) => {
+      const format: ReportFormat = options.format ?? config?.defaultFormat ?? 'terminal';
+
+      if (format === 'terminal') showCompactBanner();
 
       const startTime = performance.now();
-
-      // ── Run diagnostics and tool detection concurrently ──
-      const spinner = createSpinner('Running full health check...');
+      const spinner = format === 'terminal'
+        ? createSpinner('Running full health check...')
+        : null;
 
       const [diagnostics, tools] = await Promise.all([
         engine.runAll(),
@@ -105,14 +97,34 @@ export function createDoctorCommand(engine: DiagnosticEngine): Command {
 
       const durationMs = Math.round(performance.now() - startTime);
       const health = calculateHealthScore(diagnostics);
+      spinner?.stop();
 
-      spinner.stop();
+      // Build the structured DoctorResult (used by non-terminal renderers)
+      const doctorResult: DoctorResult = {
+        diagnostics,
+        tools,
+        health,
+        timestamp: new Date(),
+        durationMs,
+      };
 
-      // ── Title ──
+      // ── Non-terminal formats ──
+      const renderer = createRenderer(format);
+      if (renderer) {
+        const content = renderer.renderDoctor(doctorResult);
+        if (options.output) {
+          const filePath = writeReport(content, options.output, config?.reportOutputDir);
+          console.log(`  ${theme.success('✓')} Report written to ${chalk.white(filePath)}`);
+        } else {
+          process.stdout.write(content + '\n');
+        }
+        return;
+      }
+
+      // ── Terminal format ──
       console.log();
       console.log(`  ${hr('Health Dashboard', 48)}`);
 
-      // ── Health Score ──
       const { label, icon, colorFn } = healthDisplay(health.status);
       console.log();
       console.log(sectionHeader('Health Score', icon));
@@ -120,28 +132,29 @@ export function createDoctorCommand(engine: DiagnosticEngine): Command {
       console.log(`  ${theme.muted('│')}  ${progressBar(health.percentage)}`);
       console.log(`  ${theme.muted('│')}  ${colorFn(label)} ${theme.muted('·')} ${theme.muted(`${health.totalChecks} checks in ${durationMs}ms`)}`);
       console.log(connector());
-      console.log(`  ${theme.muted('│')}  ${theme.success(`${health.passedChecks} passed`)}  ${theme.muted('·')}  ${theme.warning(`${health.warningChecks} warnings`)}  ${theme.muted('·')}  ${theme.error(`${health.failedChecks} failed`)}`);
+      console.log(
+        `  ${theme.muted('│')}  ${theme.success(`${health.passedChecks} passed`)}` +
+        `  ${theme.muted('·')}  ${theme.warning(`${health.warningChecks} warnings`)}` +
+        `  ${theme.muted('·')}  ${theme.error(`${health.failedChecks} failed`)}`,
+      );
 
-      // ── Plugin Diagnostics ──
       if (diagnostics.length > 0) {
         console.log();
         console.log(sectionHeader('Plugin Diagnostics', '🔍'));
         console.log(connector());
-
         for (const result of diagnostics) {
           const badge = statusBadge(result.overallStatus);
           const name = statusColor(result.displayName, result.overallStatus);
-          const checkCount = theme.muted(`${result.checks.length} checks`);
-          const duration = theme.muted(`${result.durationMs}ms`);
-
-          console.log(`  ${theme.muted('│')}  ${badge}  ${name}  ${theme.muted('·')}  ${checkCount}  ${theme.muted('·')}  ${duration}`);
-
-          // Show individual checks for non-passing plugins
+          console.log(
+            `  ${theme.muted('│')}  ${badge}  ${name}  ${theme.muted('·')}  ` +
+            `${theme.muted(`${result.checks.length} checks`)}  ${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
+          );
           if (result.overallStatus !== 'pass') {
             for (const check of result.checks) {
               if (check.status !== 'pass') {
-                const checkBadge = statusBadge(check.status);
-                console.log(`  ${theme.muted('│')}     ${checkBadge}  ${theme.muted(check.label)}: ${theme.muted(check.message)}`);
+                console.log(
+                  `  ${theme.muted('│')}     ${statusBadge(check.status)}  ${theme.muted(check.label)}: ${theme.muted(check.message)}`,
+                );
               }
             }
           }
@@ -153,16 +166,13 @@ export function createDoctorCommand(engine: DiagnosticEngine): Command {
         console.log(`  ${theme.muted('│')}  ${theme.muted('No plugins registered.')}`);
       }
 
-      // ── Detected Tools ──
       console.log();
       console.log(sectionHeader('Development Tools', '🧰'));
       console.log(connector());
-
       const installedCount = tools.filter((t) => t.installed).length;
       console.log(`  ${theme.muted('│')}  ${theme.muted(`${installedCount} of ${tools.length} tools detected`)}`);
       console.log(connector());
 
-      // Group tools by category
       const toolsByCategory = new Map<DetectedTool['category'], DetectedTool[]>();
       for (const tool of tools) {
         const list = toolsByCategory.get(tool.category) ?? [];
@@ -177,47 +187,40 @@ export function createDoctorCommand(engine: DiagnosticEngine): Command {
       for (const category of categoryOrder) {
         const categoryTools = toolsByCategory.get(category);
         if (!categoryTools) continue;
-
-        const categoryLabel = TOOL_CATEGORY_LABELS[category];
-        console.log(`  ${theme.muted('│')}  ${theme.muted(categoryLabel)}`);
-
+        console.log(`  ${theme.muted('│')}  ${theme.muted(TOOL_CATEGORY_LABELS[category])}`);
         for (const tool of categoryTools) {
           const badge = tool.installed ? statusBadge('pass') : statusBadge('skip');
           const name = tool.installed ? chalk.white(tool.name) : theme.muted(tool.name);
           const version = tool.version ? theme.muted(`v${tool.version}`) : '';
           const notFound = !tool.installed ? theme.muted('not found') : '';
-
           console.log(`  ${theme.muted('│')}    ${badge}  ${name}  ${version}${notFound}`);
         }
-
         console.log(connector());
       }
 
-      // ── Recommendations ──
-      const issues: string[] = [];
-
-      for (const result of diagnostics) {
-        for (const check of result.checks) {
-          if (check.status === 'fail' && check.suggestion) {
-            issues.push(check.suggestion);
-          }
-        }
-      }
+      const issues = diagnostics
+        .flatMap((r) => r.checks)
+        .filter((c) => c.status === 'fail' && c.suggestion);
 
       if (issues.length > 0) {
         console.log();
         console.log(sectionHeader('Recommendations', '💡'));
         console.log(connector());
-
-        for (let i = 0; i < issues.length; i++) {
-          const num = theme.muted(`${i + 1}.`);
-          console.log(`  ${theme.muted('│')}  ${num} ${chalk.hex('#A78BFA')(issues[i])}`);
-        }
+        issues.forEach((c, i) => {
+          console.log(`  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${chalk.hex('#A78BFA')(c.suggestion!)}`);
+        });
       }
 
-      // ── Footer ──
       console.log();
       console.log(`  ${hr(undefined, 48)}`);
       console.log();
+
+      if (options.output) {
+        const mdContent = new (await import('../reporting/markdown-renderer.js')).MarkdownRenderer()
+          .renderDoctor(doctorResult);
+        const filePath = writeReport(mdContent, options.output, config?.reportOutputDir);
+        console.log(`  ${theme.muted('Report saved to')} ${chalk.white(filePath)}`);
+        console.log();
+      }
     });
 }
