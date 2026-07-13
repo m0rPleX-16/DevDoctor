@@ -64,9 +64,12 @@ export function createRollbackCommand(
 Examples:
   ${chalk.cyan('devdoctor rollback mysql mysql-service')}
   ${chalk.cyan('devdoctor rollback mysql xampp-process --yes')}
+  ${chalk.cyan('devdoctor rollback node node-permissions')}
+  ${chalk.cyan('devdoctor rollback python python-venv')}
 
 Note:
   Rollback is only available for checks whose plugin implements rollback support.
+  Supported checks: mysql-service, xampp-process, node-permissions, python-venv
   Use ${chalk.white('devdoctor fix <plugin> --dry-run')} first to preview the repair state.
 `)
     .action(async (pluginName: string, checkName: string, options: RollbackOptions) => {
@@ -103,9 +106,11 @@ Note:
           `${theme.muted('support this command.')}`,
         );
         console.log(
-          `  ${theme.muted('Currently supported: ')}${chalk.white('mysql')} ` +
-          `${theme.muted('(checks: mysql-service, xampp-process)')}`,
+          `  ${theme.muted('Currently supported:')}`,
         );
+        console.log(`    ${theme.primary('›')} ${chalk.white('mysql')}  ${theme.muted('— mysql-service, xampp-process')}`);
+        console.log(`    ${theme.primary('›')} ${chalk.white('node')}   ${theme.muted('— node-permissions')}`);
+        console.log(`    ${theme.primary('›')} ${chalk.white('python')} ${theme.muted('— python-venv')}`);
         console.log();
         process.exitCode = 1;
         return;

@@ -84,4 +84,8 @@ export class RedisPlugin implements Plugin {
       message: `Verification for "${checkName}" is not supported by the Redis plugin.`,
     };
   }
+
+  canRepair(_checkName: string): boolean {
+    return false;
+  }
 }

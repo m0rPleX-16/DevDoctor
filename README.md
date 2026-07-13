@@ -4,7 +4,7 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.1**
+> Current version: **0.4.3**
 
 ---
 
@@ -86,6 +86,11 @@ npx tsx src/cli/index.ts fix mysql
 
 # Roll back the last repair on a check
 npx tsx src/cli/index.ts rollback mysql mysql-service
+
+# Manage configurations (show resolved settings, initialize local config, print paths)
+npx tsx src/cli/index.ts config show
+npx tsx src/cli/index.ts config path
+npx tsx src/cli/index.ts config init
 
 # Generate shell tab completions
 npx tsx src/cli/index.ts completion bash >> ~/.bashrc
@@ -208,7 +213,14 @@ Every repair, verification, and rollback action is recorded in `~/.devdoctor/his
 
 ### `devdoctor rollback <plugin> <check>`
 
-Explicitly undo the last automated repair for a specific check. Only available for checks whose plugin implements rollback support (currently `mysql-service` and `xampp-process`).
+Explicitly undo the last automated repair for a specific check. Only available for checks whose plugin implements rollback support.
+
+| Plugin | Check | What rollback does |
+|---|---|---|
+| `mysql` | `mysql-service` | Stops the service that was started |
+| `mysql` | `xampp-process` | Kills the mysqld process that was spawned |
+| `node` | `node-permissions` | Restores the previous npm global prefix from `~/.devdoctor/npm-rollback-prefix.txt` |
+| `python` | `python-venv` | Deletes the `.venv` directory that was created |
 
 ```text
 Options:
@@ -216,11 +228,9 @@ Options:
 ```
 
 ```bash
-# Roll back a MySQL service repair
 devdoctor rollback mysql mysql-service
-
-# Roll back in a script
-devdoctor rollback mysql xampp-process --yes
+devdoctor rollback node node-permissions
+devdoctor rollback python python-venv --yes
 ```
 
 After rolling back, run `devdoctor diagnose <plugin>` to confirm the environment state.
@@ -242,6 +252,31 @@ devdoctor history --format json | jq '.[] | .percentage'
 ```
 
 Health score history is stored in `~/.devdoctor/runs.json` and updated automatically after every `devdoctor doctor` run.
+
+### `devdoctor config`
+
+Manage DevDoctor configurations (scaffold local configurations, view resolved settings, or locate files).
+
+```text
+Commands:
+  init [options]           Scaffold a devdoctor.json in the current directory.
+  show                     Display the resolved configuration currently in use.
+  path                     Print the paths of all config files DevDoctor reads.
+
+Options: (for init command)
+  --force                  Overwrite an existing devdoctor.json file.
+```
+
+```bash
+# Show active resolved configurations (merged user-level and project-level configs)
+devdoctor config show
+
+# Check which configuration files exist and where they are located
+devdoctor config path
+
+# Scaffold a default project-level devdoctor.json config in the current directory
+devdoctor config init
+```
 
 ---
 
@@ -334,7 +369,8 @@ src/
 │   │   ├── fix.ts           #     devdoctor fix <plugin>
 │   │   ├── rollback.ts      #     devdoctor rollback <plugin> <check>
 │   │   ├── history.ts       #     devdoctor history
-│   │   └── completion.ts    #     devdoctor completion <shell>
+│   │   ├── completion.ts    #     devdoctor completion <shell>
+│   │   └── config.ts        #     devdoctor config [subcommand]
 │   └── ui/                  #   Terminal UI helpers
 │       ├── banner.ts        #     Welcome banner (gradient ASCII art)
 │       ├── formatter.ts     #     UI formatting (progress bars, boxes, theme)
@@ -570,6 +606,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 18    | Diagnostic History + Trending            | ✅ Complete  |
 | 19    | Explicit Rollback Command                | ✅ Complete  |
 | 20    | Snapshot Tests for Renderer Output       | ✅ Complete  |
+| 21    | Node + Python Repair & Rollback          | ✅ Complete  |
 
 ---
 

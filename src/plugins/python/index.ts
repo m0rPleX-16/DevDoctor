@@ -15,6 +15,8 @@
  *   suggestions rather than attempting automated repairs.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import type { Plugin } from '../../core/types/plugin.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
@@ -23,6 +25,7 @@ import { checkPythonInstallation } from './checks/installation-check.js';
 import { checkPip } from './checks/pip-check.js';
 import { checkPythonVenv } from './checks/venv-check.js';
 import { checkPythonPath } from './checks/path-check.js';
+import { runCommand } from '../../infra/os/command-runner.js';
 
 export class PythonPlugin implements Plugin {
   readonly name = 'python';
@@ -62,7 +65,69 @@ export class PythonPlugin implements Plugin {
     };
   }
 
+  canRepair(checkName: string): boolean {
+    return checkName === 'python-venv';
+  }
+
   async repair(checkName: string): Promise<RepairResult> {
+    if (checkName === 'python-venv') {
+      try {
+        const installInfo = await checkPythonInstallation();
+        const pythonCmd = installInfo.command;
+
+        if (!pythonCmd) {
+          return {
+            checkName,
+            success: false,
+            message: 'Cannot create virtual environment: Python is not installed or not found on the system PATH.',
+            rollbackSupported: false,
+          };
+        }
+
+        const venvDir = path.join(process.cwd(), '.venv');
+        if (fs.existsSync(venvDir)) {
+          return {
+            checkName,
+            success: true,
+            message: 'A virtual environment directory (.venv) already exists in the current directory.',
+            detail: `Tip: To activate it in your current terminal, run:\n` +
+              `  .venv\\Scripts\\activate        (Windows PowerShell)\n` +
+              `  source .venv/bin/activate     (macOS/Linux)`,
+            rollbackSupported: false,
+          };
+        }
+
+        const result = await runCommand(pythonCmd, ['-m', 'venv', '.venv'], { timeoutMs: 60_000 });
+        if (!result.success) {
+          return {
+            checkName,
+            success: false,
+            message: `Failed to create virtual environment using ${pythonCmd}.`,
+            detail: result.stderr,
+            rollbackSupported: false,
+          };
+        }
+
+        return {
+          checkName,
+          success: true,
+          message: `Successfully created Python virtual environment inside ".venv" using ${pythonCmd}.`,
+          detail: `Created virtualenv at: ${venvDir}\n` +
+            `👉 Tip: You still need to activate it in your terminal by running:\n` +
+            `   - Windows: .venv\\Scripts\\activate\n` +
+            `   - macOS/Linux: source .venv/bin/activate`,
+          rollbackSupported: true,
+        };
+      } catch (err) {
+        return {
+          checkName,
+          success: false,
+          message: `Unexpected error during repair: ${err instanceof Error ? err.message : String(err)}`,
+          rollbackSupported: false,
+        };
+      }
+    }
+
     return {
       checkName,
       success: false,
@@ -72,10 +137,64 @@ export class PythonPlugin implements Plugin {
   }
 
   async verify(checkName: string): Promise<VerificationResult> {
+    if (checkName === 'python-venv') {
+      const venvDir = path.join(process.cwd(), '.venv');
+      const isWindows = process.platform === 'win32';
+      const activatePath = isWindows
+        ? path.join(venvDir, 'Scripts', 'activate.bat')
+        : path.join(venvDir, 'bin', 'activate');
+
+      const success = fs.existsSync(activatePath);
+      return {
+        checkName,
+        success,
+        message: success
+          ? 'Virtual environment directory (.venv) exists with activation scripts.'
+          : 'Virtual environment activation script not found inside .venv.',
+      };
+    }
+
     return {
       checkName,
       success: false,
       message: `Verification for "${checkName}" is not supported by the Python plugin.`,
+    };
+  }
+
+  async rollback(checkName: string): Promise<RepairResult> {
+    if (checkName === 'python-venv') {
+      try {
+        const venvDir = path.join(process.cwd(), '.venv');
+        if (fs.existsSync(venvDir)) {
+          fs.rmSync(venvDir, { recursive: true, force: true });
+          return {
+            checkName,
+            success: true,
+            message: 'Successfully rolled back: deleted the ".venv" directory.',
+            rollbackSupported: false,
+          };
+        }
+        return {
+          checkName,
+          success: true,
+          message: 'No ".venv" directory found to roll back.',
+          rollbackSupported: false,
+        };
+      } catch (err) {
+        return {
+          checkName,
+          success: false,
+          message: `Unexpected error during rollback: ${err instanceof Error ? err.message : String(err)}`,
+          rollbackSupported: false,
+        };
+      }
+    }
+
+    return {
+      checkName,
+      success: false,
+      message: `Rollback is not supported for "${checkName}".`,
+      rollbackSupported: false,
     };
   }
 }

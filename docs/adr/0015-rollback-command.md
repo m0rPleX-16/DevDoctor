@@ -52,8 +52,12 @@ pattern of the `fix` and `diagnose` menu flows.
 
 **Negative / Trade-offs:**
 - Rollback is only meaningful for plugins that implement `rollback()`. Currently
-  only `mysql` supports it (`mysql-service`, `xampp-process`). The command fails
-  fast with a clear message for unsupported plugins rather than silently no-oping.
+  three plugins support it:
+  - `mysql` — `mysql-service` (stop the service that was started), `xampp-process` (kill the process that was spawned)
+  - `node` — `node-permissions` (restore previous npm global prefix from `~/.devdoctor/npm-rollback-prefix.txt`)
+  - `python` — `python-venv` (delete the `.venv` directory that was created)
+  
+  The command fails fast with a clear list of supported checks for unsupported plugins.
 - There is no "rollback history" — the command operates on the current live state,
   not a stored snapshot. Full snapshot-based rollback is a future concern (see
   suggestions #6).

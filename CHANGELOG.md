@@ -7,6 +7,56 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.3] — 2026-07-13
+
+### Added
+
+- **`devdoctor config` command** — Three sub-commands for managing DevDoctor configuration:
+  - `devdoctor config init` — scaffolds a `devdoctor.json` in the current directory with sensible defaults. `--force` overwrites an existing file. Surfaces the path traversal guard already in `writeProjectConfig()`.
+  - `devdoctor config show` — displays the fully resolved configuration (merged user + project config) in styled terminal output.
+  - `devdoctor config path` — prints the paths of both config files with existence indicators, so users can see exactly what DevDoctor is reading.
+- **`GitPlugin.canRepair()`** — Explicit `return false` stub added. Previously missing, which meant the `fix` command's `canRepair` fallback heuristic (`status === 'fail'`) would incorrectly offer repairs for Git checks.
+- **`RedisPlugin.canRepair()`** — Same explicit `return false` stub added for the same reason.
+- **Config sub-command in interactive menu** — "⚙️ Configuration" entry added to the arrow-key menu. Selecting it prompts: init / show / path, then dispatches the chosen sub-command.
+- **Guided check picker in rollback flow** — `askRollbackOptions()` in `interactive.ts` now shows a numbered list of the known rollback-supported checks for the selected plugin (`mysql-service`, `xampp-process`, `node-permissions`, `python-venv`) instead of a free-form text input. Unknown plugins still fall back to free-form entry with a warning.
+- **Looping interactive menu** — Running `devdoctor` without arguments in a TTY now runs the interactive menu in a loop. When a selected command finishes, it prompts the user to press any key to return to the main menu instead of exiting. The Commander program is rebuilt dynamically on each loop to prevent option state leakage, and Commander's exits are cleanly caught.
+- **`waitReturnToMenu()` helper** — Helper function added in `interactive.ts` to configure raw stdin mode and wait for any keypress before resolving.
+
+### Fixed
+
+- **`lineCount()` rendering calculation** — The interactive menu's line count was slightly off, causing the `clearLines()` call to occasionally overwrite one line of prior content when navigating between items. The count now correctly accounts for: header + blank + items + description + blank + tip + blank.
+- **`getProjectConfigPath()` dead code** — The function was exported with a "future" comment since 0.1.0 but never called from the CLI. It is now the backbone of `devdoctor config init` and `devdoctor config path`.
+
+### Changed
+
+- **`devdoctor rollback` help text** — Rollback examples in `--help` now include all four supported check names.
+- **Project structure in README** — `config.ts` command added to the project structure tree.
+
+---
+
+## [0.4.2] — 2026-07-13
+
+### Added
+
+- **`NodePlugin` repair + rollback** — `node-permissions` check now supports automated repair. The repair changes the npm global prefix to a user-writable directory (`%APPDATA%\npm-global` on Windows, `~/.npm-global` on Unix), saves the previous prefix to `~/.devdoctor/npm-rollback-prefix.txt` for rollback, and creates the target directory if needed. `rollback()` restores the original prefix and cleans up the rollback file.
+- **`PythonPlugin` repair + rollback** — `python-venv` check now supports automated repair. The repair creates a `.venv` virtual environment in the current working directory using the detected Python command (`python3`/`python`). `verify()` confirms the activation script exists. `rollback()` removes the `.venv` directory with `fs.rmSync`.
+- **`NodePlugin.canRepair()` and `PythonPlugin.canRepair()`** — Both plugins now declare repair eligibility explicitly, consistent with `MysqlPlugin`.
+- **Unit tests for new repair/rollback paths** (`src/plugins/node/index.test.ts`, `src/plugins/python/index.test.ts`) — Mocked unit tests covering `canRepair`, successful repair, rollback from saved state, and edge cases.
+
+### Changed
+
+- **`devdoctor rollback` help text** — Updated supported checks list to include `node-permissions` and `python-venv` alongside the existing `mysql-service` and `xampp-process`.
+- **ADR-0015** — Updated to document all three plugins with rollback support and their specific rollback strategies.
+- **Markdown renderer `formatTimestamp`** — Changed from `toLocaleString()` (locale/timezone-dependent) to `toISOString()` (deterministic UTC). Saved Markdown reports now use unambiguous ISO 8601 timestamps that are consistent across all machines and CI environments. This was the root cause of snapshot test mismatches between machines.
+- **Renderer snapshots regenerated** — All 10 Markdown renderer snapshots updated to reflect the ISO timestamp format. Snapshots are now fully deterministic.
+- Test suite grows from 122 to 130 tests across 19 test files.
+
+### Fixed
+
+- **Snapshot test mismatch on CI / different timezones** — `MarkdownRenderer.formatTimestamp()` previously called `toLocaleString()`, which renders differently depending on the machine's locale and timezone. This caused snapshot assertions to fail on any machine with a different timezone than the one that generated the snapshots. Fixed by switching to `toISOString()`.
+
+---
+
 ## [0.4.1] — 2026-07-13
 
 ### Added
@@ -186,6 +236,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.3]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.3.0...v0.3.1
