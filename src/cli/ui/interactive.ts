@@ -482,7 +482,8 @@ async function askConfigOptions(): Promise<string[]> {
   return ['config', sub];
 }
 
-
+/**
+ * Run the interactive arrow-key navigation menu.
  *
  * Returns null if the user exits without selecting (Esc / q).
  *
