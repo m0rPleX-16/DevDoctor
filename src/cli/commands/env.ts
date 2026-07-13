@@ -5,10 +5,12 @@
  *
  * Displays development-relevant environment variables grouped by
  * technology, with educational descriptions and PATH validation.
+ * Supports --format json for machine-readable output.
  *
  * Options:
- *   --all   Show ALL environment variables, not just dev-relevant ones
- *   --path  Show only the PATH breakdown
+ *   --all     Show ALL environment variables, not just dev-relevant ones
+ *   --path    Show only the PATH breakdown
+ *   --format  Output format: terminal (default), json
  */
 
 import { Command } from 'commander';
@@ -120,7 +122,16 @@ export function createEnvCommand(): Command {
     .description('Display development-relevant environment variables.')
     .option('--all', 'Show ALL environment variables, not just dev-relevant ones')
     .option('--path', 'Show only the PATH breakdown')
-    .action(async (options: { all?: boolean; path?: boolean }) => {
+    .option('-f, --format <format>', 'Output format: terminal (default), json', 'terminal')
+    .action(async (options: { all?: boolean; path?: boolean; format?: string }) => {
+      const format = options.format ?? 'terminal';
+
+      if (format === 'json') {
+        const envInfo = scanEnvironment(options.all ?? false);
+        process.stdout.write(JSON.stringify(envInfo, null, 2) + '\n');
+        return;
+      }
+
       showCompactBanner();
 
       const spinner = createSpinner('Scanning environment...');

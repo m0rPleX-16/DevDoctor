@@ -28,6 +28,23 @@ import ora, { type Ora } from 'ora';
  * ```
  */
 export function createSpinner(text: string): Ora {
+  if (process.env.DEVDOCTOR_QUIET === '1') {
+    // Mock Ora instance for quiet mode
+    const mockOra = {
+      start: () => mockOra,
+      stop: () => mockOra,
+      succeed: () => mockOra,
+      fail: () => mockOra,
+      warn: () => mockOra,
+      info: () => mockOra,
+      clear: () => mockOra,
+      render: () => mockOra,
+      frame: () => '',
+      text,
+    } as unknown as Ora;
+    return mockOra;
+  }
+
   return ora({
     text,
     color: 'cyan',

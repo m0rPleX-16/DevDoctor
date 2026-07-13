@@ -17,25 +17,13 @@
  */
 
 import type { Plugin } from '../../core/types/plugin.js';
-import type { DiagnosticResult, CheckStatus } from '../../core/types/diagnostic.js';
+import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
+import { deriveOverallStatus } from '../../core/engine/status-utils.js';
 import { checkNodeVersion } from './checks/version-check.js';
 import { checkNpm } from './checks/npm-check.js';
 import { checkNodePath } from './checks/path-check.js';
 import { checkNodePermissions } from './checks/permissions-check.js';
-
-/**
- * Determine the overall status from a list of individual check statuses.
- * The overall status is the "worst" status found.
- *
- * Priority: fail > warn > skip > pass
- */
-function deriveOverallStatus(statuses: CheckStatus[]): CheckStatus {
-  if (statuses.includes('fail')) return 'fail';
-  if (statuses.includes('warn')) return 'warn';
-  if (statuses.includes('skip')) return 'skip';
-  return 'pass';
-}
 
 /**
  * Node.js Plugin

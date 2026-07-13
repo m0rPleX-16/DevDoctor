@@ -29,6 +29,8 @@ import { createInfoCommand } from './commands/info.js';
 import { createEnvCommand } from './commands/env.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createFixCommand } from './commands/fix.js';
+import { createCompletionCommand } from './commands/completion.js';
+import { runInteractiveMenu } from './ui/interactive.js';
 import chalk from 'chalk';
 import { theme } from './ui/formatter.js';
 
@@ -72,7 +74,15 @@ async function main(): Promise<void> {
       'A plugin-based CLI utility that diagnoses, explains, and safely repairs ' +
         'common development environment issues.',
     )
-    .version(PKG_VERSION, '-V, --version', 'Display the current version');
+    .version(PKG_VERSION, '-V, --version', 'Display the current version')
+    .option('-q, --quiet', 'Suppress all styling, banners, and spinners');
+
+  program.hook('preAction', (thisCommand) => {
+    if (thisCommand.opts().quiet) {
+      chalk.level = 0; // Suppress colors globally
+      process.env.DEVDOCTOR_QUIET = '1'; // Signal to UI components
+    }
+  });
 
   // Pass resolved config into commands that need format/output options
   program.addCommand(createDiagnoseCommand(engine, config));
@@ -80,6 +90,7 @@ async function main(): Promise<void> {
   program.addCommand(createEnvCommand());
   program.addCommand(createDoctorCommand(engine, config));
   program.addCommand(createFixCommand(registry, engine, repairEngine));
+  program.addCommand(createCompletionCommand('devdoctor'));
 
   program.addHelpText('before', () => {
     showBanner();
@@ -103,8 +114,21 @@ Examples:
 `;
   });
 
-  program.action(() => {
-    program.outputHelp();
+  // When no arguments are given, launch the interactive menu in a TTY.
+  // In non-interactive environments (pipes, CI) fall back to help output.
+  program.action(async () => {
+    if (process.stdin.isTTY && process.stdout.isTTY) {
+      showBanner();
+      const pluginNames = registry.getNames();
+      const argv = await runInteractiveMenu(pluginNames, process.argv.slice(0, 2));
+
+      if (argv) {
+        // Re-parse with the chosen command — Commander dispatches it normally
+        await program.parseAsync(argv);
+      }
+    } else {
+      program.outputHelp();
+    }
   });
 
   // ── Step 6: Parse and dispatch ──

@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin } from '../../core/types/plugin.js';
-import type { DiagnosticResult, CheckStatus } from '../../core/types/diagnostic.js';
+import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
+import { deriveOverallStatus } from '../../core/engine/status-utils.js';
 import type { ConfigCheckResult } from './checks/config-check.js';
 import type { XamppProcessCheckResult } from './checks/xampp-process-check.js';
 import { checkMysqlConfig } from './checks/config-check.js';
@@ -23,13 +24,6 @@ import {
 } from './mysql-constants.js';
 
 // ── Helpers ───────────────────────────────────────────────────────
-
-function deriveOverallStatus(statuses: CheckStatus[]): CheckStatus {
-  if (statuses.includes('fail')) return 'fail';
-  if (statuses.includes('warn')) return 'warn';
-  if (statuses.includes('skip')) return 'skip';
-  return 'pass';
-}
 
 /**
  * Resolve the first installed MySQL service name from the candidate list.

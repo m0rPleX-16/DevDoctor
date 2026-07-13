@@ -40,10 +40,12 @@ import type { ResolvedConfig } from '../../core/types/config.js';
 
 import { NodePlugin } from '../../plugins/node/index.js';
 import { MysqlPlugin } from '../../plugins/mysql/index.js';
+import { GitPlugin } from '../../plugins/git/index.js';
 
 const BUILTIN_PLUGINS: Plugin[] = [
   new NodePlugin(),
   new MysqlPlugin(),
+  new GitPlugin(),
 ];
 
 // ── Runtime type guard ────────────────────────────────────────────
