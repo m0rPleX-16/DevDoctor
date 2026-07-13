@@ -26,6 +26,7 @@ import { showBanner } from './ui/banner.js';
 import { PluginRegistry } from '../plugins/plugin-registry.js';
 import { DiagnosticEngine } from '../core/engine/diagnostic-engine.js';
 import { NodePlugin } from '../plugins/node/index.js';
+import { MysqlPlugin } from '../plugins/mysql/index.js';
 import { createDiagnoseCommand } from './commands/diagnose.js';
 import { createInfoCommand } from './commands/info.js';
 import { createEnvCommand } from './commands/env.js';
@@ -41,6 +42,7 @@ async function main(): Promise<void> {
   // In Phase 5, this will be replaced with dynamic plugin discovery.
   const registry = new PluginRegistry();
   registry.register(new NodePlugin());
+  registry.register(new MysqlPlugin());
 
   // ── Step 2: Create the diagnostic engine ──
   //

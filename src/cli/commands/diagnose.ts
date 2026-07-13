@@ -108,9 +108,11 @@ export function createDiagnoseCommand(engine: DiagnosticEngine): Command {
       const statusText =
         result.overallStatus === 'pass'
           ? statusLine('pass', 'All checks passed')
-          : result.overallStatus === 'warn'
-            ? statusLine('warn', 'Warnings detected')
-            : statusLine('fail', 'Issues found');
+          : result.overallStatus === 'skip'
+            ? statusLine('skip', 'Checks completed')
+            : result.overallStatus === 'warn'
+              ? statusLine('warn', 'Warnings detected')
+              : statusLine('fail', 'Issues found');
 
       console.log(`  ${statusText}  ${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`);
       console.log();

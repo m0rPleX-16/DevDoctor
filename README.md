@@ -69,11 +69,12 @@ Options:
 
 **Available plugins:**
 
-| Plugin | Description                                                |
-| :---   | :---                                                       |
-| `node` | Node.js installation, npm availability, PATH configuration |
+| Plugin  | Description                                                 |
+| :---    | :---                                                        |
+| `node`  | Node.js installation, npm availability, PATH configuration  |
+| `mysql` | MySQL/MariaDB service, TCP port, config, error log checks   |
 
-More plugins (MySQL, Docker, Git, etc.) are planned for future phases.
+More plugins (Docker, Git, PostgreSQL, etc.) are planned for future phases.
 
 ### `devdoctor info`
 
@@ -293,7 +294,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | :---  | :---                            | :---        |
 | 1     | CLI Foundation                  | ✅ Complete  |
 | 2     | System Information              | ✅ Complete  |
-| 3     | Diagnostics Engine              | 🔜 Planned   |
+| 3     | Diagnostics Engine              | ✅ Complete  |
 | 4     | Repair Engine                   | 🔜 Planned   |
 | 5     | Plugin System (dynamic loading) | 🔜 Planned   |
 | 6     | Reporting (JSON, Markdown, HTML)| 🔜 Planned   |

@@ -101,7 +101,10 @@ export async function runCommand(
 
     const { stdout, stderr } = shell
       ? await execAsync(
-          [command, ...args].join(' '),
+          [
+            command,
+            ...args.map((arg) => (arg.includes(' ') ? `"${arg}"` : arg)),
+          ].join(' '),
           execOptions,
         )
       : await execFileAsync(command, args, {
