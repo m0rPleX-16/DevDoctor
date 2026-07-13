@@ -160,8 +160,8 @@ Runtime
 
   Node.js          v20.11.0
   npm              v10.2.4
-  Working Dir      C:\Code Practice\DevDoctor
-  Home Dir         C:\Users\glenn
+  Working Dir      C:\Projects\DevDoctor
+  Home Dir         C:\Users\(Username)
 ```
 
 ---
