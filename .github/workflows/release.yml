@@ -1,0 +1,47 @@
+name: Release Standalone Binaries
+
+on:
+  push:
+    tags:
+      - 'v*' # Run whenever a version tag is pushed (e.g. v1.0.0)
+
+permissions:
+  contents: write # Required to create a release and upload assets
+
+jobs:
+  build-binaries:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Compile TypeScript
+      run: npm run build
+
+    - name: Package standalone binaries
+      run: npm run build:binary
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        files: |
+          binaries/devdoctor-win.exe
+          binaries/devdoctor-linux
+          binaries/devdoctor-macos
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
