@@ -14,7 +14,7 @@ import { checkXamppProcess } from './checks/xampp-process-check.js';
 import { checkService } from '../../infra/system/service-checker.js';
 import { runCommand } from '../../infra/os/command-runner.js';
 import { getPortOwner } from '../../infra/system/port-checker.js';
-import { spawnDetached, findRunningProcess } from '../../infra/os/process-manager.js';
+import { spawnDetached, findRunningProcess, waitForPort } from '../../infra/os/process-manager.js';
 import {
   MYSQL_WINDOWS_SERVICES,
   MYSQL_UNIX_SERVICES,
@@ -43,6 +43,46 @@ async function resolveInstalledServiceName(): Promise<string | undefined> {
     if (info.status !== 'not_installed') return name;
   }
   return undefined;
+}
+
+/**
+ * Build a systemctl command that is elevation-aware (ADR-0009).
+ *
+ * On Unix:
+ * - If already root (UID 0), skip sudo entirely.
+ * - Otherwise, use `sudo -n` (non-interactive). This fails fast with a clear
+ *   error rather than hanging for a password prompt when no TTY is available.
+ *
+ * @param action      - systemctl subcommand (e.g. "start", "stop")
+ * @param serviceName - the service to act on
+ */
+async function runSystemctl(
+  action: string,
+  serviceName: string,
+): Promise<ReturnType<typeof runCommand>> {
+  // On root we can call systemctl directly
+  const isRoot =
+    typeof process.getuid === 'function' && process.getuid() === 0;
+
+  if (isRoot) {
+    return runCommand('systemctl', [action, serviceName]);
+  }
+
+  // `sudo -n` exits immediately with an error if a password would be required,
+  // which prevents indefinite hangs in non-interactive terminals.
+  const result = await runCommand('sudo', ['-n', 'systemctl', action, serviceName]);
+
+  if (!result.success && (result.stderr.includes('password') || result.stderr.includes('sudo'))) {
+    // Return a friendlier error message for the common "needs password" case
+    return {
+      ...result,
+      stderr:
+        `Elevation required: re-run with sudo or as root.\n` +
+        `Original error: ${result.stderr}`,
+    };
+  }
+
+  return result;
 }
 
 // ── Plugin ────────────────────────────────────────────────────────
@@ -114,7 +154,7 @@ export class MysqlPlugin implements Plugin {
 
       const startResult = isWindows
         ? await runCommand('net', ['start', serviceName])
-        : await runCommand('sudo', ['systemctl', 'start', serviceName]);
+        : await runSystemctl('start', serviceName);  // ADR-0009: elevation-aware
 
       if (startResult.success) {
         return {
@@ -127,13 +167,18 @@ export class MysqlPlugin implements Plugin {
       }
 
       const needElevation =
-        startResult.stderr.includes('System error 5') || startResult.exitCode === 5;
+        startResult.stderr.includes('System error 5') ||
+        startResult.exitCode === 5 ||
+        startResult.stderr.includes('Elevation required');
+
       return {
         checkName,
         success: false,
         message: `Failed to start MySQL service "${serviceName}".`,
         detail: needElevation
-          ? 'Please run the terminal as Administrator and try again.'
+          ? isWindows
+            ? 'Please run the terminal as Administrator and try again.'
+            : 'Re-run with sudo or as root: sudo devdoctor fix mysql'
           : startResult.stderr,
         rollbackSupported: false,
       };
@@ -177,13 +222,30 @@ export class MysqlPlugin implements Plugin {
         };
       }
 
-      // Give the process a moment to initialise before verification
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // ADR-0009: Probe TCP port instead of fixed sleep.
+      // waitForPort polls the configured port until mysqld accepts connections
+      // or 10 seconds elapse — whichever comes first.
+      const config = this.lastConfig ?? (await checkMysqlConfig());
+      const portReady = await waitForPort(config.port, '127.0.0.1', 10_000);
+
+      if (!portReady) {
+        return {
+          checkName,
+          success: false,
+          message:
+            `MySQL process was spawned (PID: ${result.pid ?? 'unknown'}) but did not ` +
+            `become reachable on port ${config.port} within 10 seconds.`,
+          detail:
+            'mysqld may have failed to start. Check the MySQL error log for details.\n' +
+            `Spawned: ${mysqldPath}${configArgs.length ? ` ${configArgs[0]}` : ''}`,
+          rollbackSupported: true,
+        };
+      }
 
       return {
         checkName,
         success: true,
-        message: `MySQL process started (PID: ${result.pid ?? 'unknown'}).`,
+        message: `MySQL process started and accepting connections (PID: ${result.pid ?? 'unknown'}).`,
         detail: `Spawned: ${mysqldPath}${configArgs.length ? ` ${configArgs[0]}` : ''}`,
         // We can kill the process we just started if verification fails
         rollbackSupported: true,
@@ -193,6 +255,8 @@ export class MysqlPlugin implements Plugin {
     // ── mysql-port ──
     if (checkName === 'mysql-port') {
       const config = this.lastConfig ?? (await checkMysqlConfig());
+
+      // ADR-0009: Read the owner at repair time and cross-check before killing.
       const owner = await getPortOwner(config.port);
 
       if (!owner) {
@@ -204,15 +268,40 @@ export class MysqlPlugin implements Plugin {
         };
       }
 
+      // Re-read the owner immediately before issuing the kill to mitigate PID recycling.
+      // If the PID or process name changed between diagnosis and now, abort.
+      const ownerNow = await getPortOwner(config.port);
+
+      if (!ownerNow) {
+        return {
+          checkName,
+          success: true,
+          message: `Port ${config.port} became free before the repair ran. No action needed.`,
+          rollbackSupported: false,
+        };
+      }
+
+      if (ownerNow.pid !== owner.pid || ownerNow.processName !== owner.processName) {
+        return {
+          checkName,
+          success: false,
+          message:
+            `Port ${config.port} owner changed between diagnosis and repair ` +
+            `(was PID ${owner.pid} "${owner.processName}", now PID ${ownerNow.pid} "${ownerNow.processName}"). ` +
+            `Aborting to prevent killing the wrong process.`,
+          rollbackSupported: false,
+        };
+      }
+
       const killResult = isWindows
-        ? await runCommand('taskkill', ['/f', '/pid', String(owner.pid)])
-        : await runCommand('kill', ['-9', String(owner.pid)]);
+        ? await runCommand('taskkill', ['/f', '/pid', String(ownerNow.pid)])
+        : await runCommand('kill', ['-9', String(ownerNow.pid)]);
 
       if (killResult.success) {
         return {
           checkName,
           success: true,
-          message: `Terminated conflicting process "${owner.processName}" (PID: ${owner.pid}) on port ${config.port}.`,
+          message: `Terminated conflicting process "${ownerNow.processName}" (PID: ${ownerNow.pid}) on port ${config.port}.`,
           detail: killResult.stdout,
           rollbackSupported: false,
         };
@@ -221,7 +310,7 @@ export class MysqlPlugin implements Plugin {
       return {
         checkName,
         success: false,
-        message: `Failed to terminate "${owner.processName}" (PID: ${owner.pid}) on port ${config.port}.`,
+        message: `Failed to terminate "${ownerNow.processName}" (PID: ${ownerNow.pid}) on port ${config.port}.`,
         detail: killResult.stderr,
         rollbackSupported: false,
       };
@@ -304,7 +393,7 @@ export class MysqlPlugin implements Plugin {
 
       const stopResult = isWindows
         ? await runCommand('net', ['stop', serviceName])
-        : await runCommand('sudo', ['systemctl', 'stop', serviceName]);
+        : await runSystemctl('stop', serviceName); // ADR-0009: elevation-aware
 
       return stopResult.success
         ? {

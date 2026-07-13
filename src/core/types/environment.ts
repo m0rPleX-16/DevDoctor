@@ -82,6 +82,28 @@ export interface PathEntry {
 }
 
 /**
+ * A detected security risk in the environment configuration.
+ *
+ * ADR-0012: Environment Security Risk Detection
+ */
+export interface EnvSecurityRisk {
+  /** How serious this risk is */
+  severity: 'warn' | 'fail';
+
+  /** Which broad category this risk belongs to */
+  category: 'path' | 'secret';
+
+  /** Short title shown in the UI */
+  title: string;
+
+  /** Detailed explanation of the risk */
+  detail: string;
+
+  /** Suggested remediation */
+  suggestion: string;
+}
+
+/**
  * The complete environment scan result.
  */
 export interface EnvironmentInfo {
@@ -93,4 +115,10 @@ export interface EnvironmentInfo {
 
   /** Total number of environment variables on the system */
   totalVarCount: number;
+
+  /**
+   * Security risks detected in the environment.
+   * Empty when no risks are found — the env command skips the section entirely.
+   */
+  securityRisks: EnvSecurityRisk[];
 }

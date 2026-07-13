@@ -13,13 +13,22 @@
  * Design Pattern: Facade
  * Provides a simple interface to the CLI layer, hiding the complexity
  * of plugin lookup, timing, and result aggregation.
+ *
+ * ADR-0010: runAll() now runs plugins concurrently via Promise.allSettled()
+ * and applies a per-plugin timeout so a hung plugin can't block the dashboard.
  */
 
 import type { DiagnosticResult } from '../types/diagnostic.js';
 import type { PluginRegistry } from '../../plugins/plugin-registry.js';
 
+/** Default per-plugin timeout for runAll() in milliseconds. */
+const DEFAULT_PLUGIN_TIMEOUT_MS = 30_000;
+
 export class DiagnosticEngine {
-  constructor(private readonly registry: PluginRegistry) {}
+  constructor(
+    private readonly registry: PluginRegistry,
+    private readonly pluginTimeoutMs: number = DEFAULT_PLUGIN_TIMEOUT_MS,
+  ) {}
 
   /**
    * Run diagnostics for a specific plugin.
@@ -61,21 +70,74 @@ export class DiagnosticEngine {
   }
 
   /**
-   * Run diagnostics for ALL registered plugins.
-   * Useful for a future `devdoctor doctor` command.
+   * Run diagnostics for ALL registered plugins concurrently.
+   *
+   * ADR-0010: Uses Promise.allSettled() so plugins run in parallel and
+   * a single failure doesn't prevent the remaining plugins from completing.
+   * Each plugin is wrapped in a per-plugin timeout (default 30 s); a timed-out
+   * plugin produces a 'skip' result rather than blocking the dashboard forever.
+   *
+   * @returns Array of DiagnosticResult for all plugins, in registration order
    */
   async runAll(): Promise<DiagnosticResult[]> {
     const plugins = this.registry.list();
-    const results: DiagnosticResult[] = [];
 
-    for (const plugin of plugins) {
-      const result = await this.runDiagnostics(plugin.name);
-      if (result) {
-        results.push(result);
+    const settlements = await Promise.allSettled(
+      plugins.map((plugin) => this.runWithTimeout(plugin.name)),
+    );
+
+    const results: DiagnosticResult[] = [];
+    for (const settled of settlements) {
+      if (settled.status === 'fulfilled' && settled.value !== null) {
+        results.push(settled.value);
       }
+      // Rejected settlements are already handled inside runWithTimeout —
+      // it never rejects, it always resolves to a DiagnosticResult.
     }
 
     return results;
+  }
+
+  /**
+   * Run a single plugin's diagnostics with a timeout guard.
+   *
+   * Returns a skip result if the plugin exceeds pluginTimeoutMs.
+   * Never rejects.
+   */
+  private async runWithTimeout(pluginName: string): Promise<DiagnosticResult | null> {
+    const plugin = this.registry.get(pluginName);
+    if (!plugin) return null;
+
+    const timeoutResult: DiagnosticResult = {
+      pluginName: plugin.name,
+      displayName: plugin.displayName,
+      timestamp: new Date(),
+      durationMs: this.pluginTimeoutMs,
+      checks: [
+        {
+          name: 'plugin-timeout',
+          label: 'Plugin Execution',
+          status: 'skip',
+          message: `Plugin "${plugin.displayName}" timed out after ${this.pluginTimeoutMs / 1000}s.`,
+          detail:
+            'The plugin did not complete within the allowed time. ' +
+            'This may indicate a hung network call or a slow system command. ' +
+            'Try running `devdoctor diagnose ' + plugin.name + '` to diagnose it individually.',
+        },
+      ],
+      overallStatus: 'skip',
+    };
+
+    const timeoutPromise = new Promise<DiagnosticResult>((resolve) =>
+      setTimeout(() => resolve(timeoutResult), this.pluginTimeoutMs),
+    );
+
+    try {
+      const result = await Promise.race([this.runDiagnostics(pluginName), timeoutPromise]);
+      return result;
+    } catch {
+      return timeoutResult;
+    }
   }
 
   /**

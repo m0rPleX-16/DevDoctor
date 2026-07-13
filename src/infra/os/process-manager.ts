@@ -10,12 +10,18 @@
  * - Why unref() is necessary to let the Node.js event loop exit
  * - How to check for running processes by name on Windows and Unix
  *
+ * Security note (ADR-0009):
+ * Process names passed to tasklist /fi are validated against an allowlist
+ * pattern before use to prevent filter injection. PID-based TCP probing is
+ * used for startup verification rather than a fixed sleep.
+ *
  * Architecture note:
  * Lives in the Infrastructure layer. Only this file interacts with
  * child_process.spawn for long-lived processes. All other code uses
  * command-runner.ts or this module — never child_process directly.
  */
 
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { runCommand } from './command-runner.js';
 
@@ -37,6 +43,22 @@ export interface ProcessInfo {
   pids: number[];
   /** The process name that was searched */
   processName: string;
+}
+
+// ── Security: process name validation ────────────────────────────
+
+/**
+ * Validate that a process name is safe to use in a `tasklist /fi` filter.
+ *
+ * ADR-0009: Only allow names matching the Windows executable convention
+ * (alphanumeric, dash, dot, ending with .exe). This prevents filter
+ * injection via names containing `"`, `/fi`, or shell metacharacters.
+ *
+ * @param processName - The name to validate
+ * @returns true if the name is safe to use in the filter
+ */
+function isValidWindowsProcessName(processName: string): boolean {
+  return /^[\w.\-]+\.exe$/i.test(processName);
 }
 
 // ── Spawn ─────────────────────────────────────────────────────────
@@ -82,6 +104,69 @@ export function spawnDetached(
   }
 }
 
+// ── TCP startup probe ─────────────────────────────────────────────
+
+/**
+ * Poll a TCP port until it is accepting connections or the timeout expires.
+ *
+ * ADR-0009: Replaces the fixed 2-second sleep used previously for mysqld
+ * startup verification. This probes the actual port, which is both faster
+ * on healthy machines and more reliable on slow ones.
+ *
+ * @param port         - TCP port to probe
+ * @param host         - Host to connect to (default: 127.0.0.1)
+ * @param timeoutMs    - Maximum wait time in milliseconds (default: 10000)
+ * @param intervalMs   - Polling interval in milliseconds (default: 150)
+ * @returns true if the port became reachable within the timeout
+ */
+export function waitForPort(
+  port: number,
+  host: string = '127.0.0.1',
+  timeoutMs: number = 10_000,
+  intervalMs: number = 150,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+
+    function probe() {
+      const socket = new net.Socket();
+      const cleanup = () => {
+        socket.removeAllListeners();
+        socket.destroy();
+      };
+
+      socket.setTimeout(intervalMs);
+
+      socket.once('connect', () => {
+        cleanup();
+        resolve(true);
+      });
+
+      socket.once('error', () => {
+        cleanup();
+        if (Date.now() >= deadline) {
+          resolve(false);
+        } else {
+          setTimeout(probe, intervalMs);
+        }
+      });
+
+      socket.once('timeout', () => {
+        cleanup();
+        if (Date.now() >= deadline) {
+          resolve(false);
+        } else {
+          setTimeout(probe, intervalMs);
+        }
+      });
+
+      socket.connect(port, host);
+    }
+
+    probe();
+  });
+}
+
 // ── Process detection ─────────────────────────────────────────────
 
 /**
@@ -109,6 +194,15 @@ export async function findRunningProcess(processName: string): Promise<ProcessIn
 }
 
 async function findWindowsProcess(processName: string): Promise<ProcessInfo> {
+  // ADR-0009: Validate the process name before interpolating into the tasklist filter.
+  // Invalid names (containing metacharacters or not ending in .exe) are rejected early.
+  if (!isValidWindowsProcessName(processName)) {
+    console.warn(
+      `[devdoctor] Unsafe process name rejected for tasklist query: "${processName}"`,
+    );
+    return { running: false, pids: [], processName };
+  }
+
   // tasklist /fi filters by image name; /nh suppresses the header line;
   // /fo csv gives parseable output.
   const result = await runCommand(

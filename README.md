@@ -4,6 +4,8 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
+> Current version: **0.2.0**
+
 ---
 
 ## Features
@@ -11,6 +13,9 @@ Dev Doctor isn't just another diagnostic tool — it **teaches you** about your 
 - **Diagnose** — Run health checks on Node.js and MySQL local environments (or custom plugins)
 - **Explain** — Detailed root causes and educational explanations for every check
 - **Repair** — Safe, confirmation-prompted automatic repairs with rollback support
+- **CI-Ready** — `--yes` to auto-confirm repairs and `--dry-run` to preview without changes
+- **Audit Log** — Every repair action is recorded in `~/.devdoctor/history.json`
+- **Security Scan** — Detects dangerous PATH entries and suspected secrets in environment variables
 - **Report** — Generate system health status in terminal, JSON, or Markdown formats
 - **Configuration** — Custom configuration overlays using local `devdoctor.json` files
 - **Extensible** — Dynamic runtime plugin loading directly from filesystem directories
@@ -89,13 +94,18 @@ Display system and environment information including OS, CPU, memory usage, runt
 
 ### `devdoctor env`
 
-Display development-relevant environment variables grouped by category. Performs validation check on each PATH entry to identify missing or invalid directories.
+Display development-relevant environment variables grouped by category. Performs validation check on each PATH entry to identify missing or invalid directories. Also flags security risks in the environment.
 
 ```text
 Options:
   --all    Show ALL environment variables, not just dev-relevant ones
   --path   Show only the PATH breakdown
 ```
+
+Security risks detected:
+- `.` or empty entry in PATH (privilege escalation vector)
+- World-writable PATH directories (Unix only)
+- Environment variable names matching secret patterns (`*_TOKEN`, `*_KEY`, `*_SECRET`, etc.) with token-like values
 
 ### `devdoctor doctor`
 
@@ -104,6 +114,16 @@ Run a full health check across all registered plugins and scan for installed dev
 ### `devdoctor fix <plugin>`
 
 Safely attempt automated repairs for issues detected by a specific plugin (e.g. starting stopped services, freeing port conflicts). Includes safety confirmations and post-repair verifications.
+
+```text
+Options:
+  -y, --yes     Auto-confirm all repairs without prompting (for CI/scripted environments)
+  --dry-run     Show what would be repaired without making any changes (exits 1 if issues exist)
+```
+
+When `--yes` is not provided and stdin is not a TTY (e.g. a CI pipeline), the command fails immediately with a clear message rather than hanging. Use `--yes` for non-interactive environments.
+
+Every repair, verification, and rollback action is recorded in `~/.devdoctor/history.json` (NDJSON format) for auditing.
 
 ---
 
@@ -166,6 +186,20 @@ Runtime
 
 ---
 
+## Security
+
+Dev Doctor applies defence-in-depth across all layers (ADR-0009):
+
+- **Shell injection prevention** — Arguments passed through Windows shell mode are sanitized, stripping `cmd.exe` metacharacters before building the command string.
+- **Path traversal protection** — `--output` and `reportOutputDir` paths are resolved and validated to stay within the allowed output directory before any file is written.
+- **Process name allowlist** — Windows `tasklist /fi` filters only accept names matching `*.exe` to prevent filter injection.
+- **PID race mitigation** — Before killing a port-blocking process, the PID is cross-checked to confirm it still owns the port (prevents killing a recycled PID).
+- **Elevation-aware Unix repair** — `sudo -n` is used instead of `sudo` to fail fast rather than hang when a TTY password prompt would be required.
+- **mysqld startup probe** — TCP port polling replaces the previous fixed sleep for more reliable startup detection.
+- **Concurrent fix guard** — A lockfile at `~/.devdoctor/fix.lock` prevents two `fix` runs from interfering with each other.
+
+---
+
 ## Project Structure
 
 Dev Doctor follows **Clean Architecture** with four distinct layers:
@@ -195,7 +229,8 @@ src/
 │   │   ├── doctor-result.ts #     DoctorResult, HealthScore
 │   │   └── repair.ts        #     RepairResult, VerificationResult
 │   └── engine/
-│       └── diagnostic-engine.ts  # Orchestrates plugin diagnostics
+│       ├── diagnostic-engine.ts  # Orchestrates plugin diagnostics (concurrent, per-plugin timeout)
+│       └── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
 │
 ├── plugins/                 # Plugin Layer
 │   ├── plugin-registry.ts   #   Plugin registration and lookup
@@ -206,9 +241,13 @@ src/
 │           ├── npm-check.ts
 │           └── path-check.ts
 │
-└── infra/                   # Infrastructure Layer
+├── infra/                   # Infrastructure Layer
     ├── os/
-    │   └── command-runner.ts #   Safe child_process/shell wrapper
+    │   ├── command-runner.ts         #   Safe child_process wrapper (shell injection hardening)
+    │   ├── process-manager.ts        #   Daemon spawn, TCP probe, process detection
+    │   └── ...
+    ├── audit/
+    │   └── audit-logger.ts           #   Repair audit log (~/.devdoctor/history.json)
     └── system/
         ├── system-info-collector.ts  # OS/CPU/memory info
         ├── tool-detector.ts          # Scans for 9+ dev tools
@@ -356,6 +395,10 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | [0006](docs/adr/0006-dynamic-plugin-loading.md)  | Dynamic runtime filesystem plugin loading                   |
 | [0007](docs/adr/0007-reporting-strategy.md)      | Pluggable multi-format reporting renderer pattern          |
 | [0008](docs/adr/0008-packaging.md)               | Portable binary compilation packaging                       |
+| [0009](docs/adr/0009-security-hardening.md)      | Shell injection, path traversal, PID race, sudo hardening   |
+| [0010](docs/adr/0010-repair-engine-and-fix-ux.md) | RepairEngine, concurrent diagnostics, `--yes`/`--dry-run`  |
+| [0011](docs/adr/0011-audit-log.md)               | Append-only NDJSON repair audit log                         |
+| [0012](docs/adr/0012-env-security-checks.md)     | Environment security risk detection (PATH, secrets)         |
 
 ---
 
@@ -371,6 +414,10 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 6     | Reporting (JSON, Markdown)      | ✅ Complete  |
 | 7     | Configuration (`devdoctor.json`)| ✅ Complete  |
 | 8     | Packaging (standalone binaries) | ✅ Complete  |
+| 9     | Security Hardening              | ✅ Complete  |
+| 10    | RepairEngine + CI Fix UX        | ✅ Complete  |
+| 11    | Repair Audit Log                | ✅ Complete  |
+| 12    | Environment Security Checks     | ✅ Complete  |
 
 ---
 
@@ -458,3 +505,5 @@ If you do not have Node.js installed, you can use the pre-compiled standalone bi
 ## License
 
 MIT
+
+> See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.

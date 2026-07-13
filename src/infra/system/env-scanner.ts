@@ -10,6 +10,11 @@
  * - Common development environment variables and their purposes
  * - The difference between user and system environment variables
  *
+ * ADR-0012: Detects common environment security risks:
+ * - `.` or empty entry in PATH (privilege escalation vector)
+ * - World-writable PATH entries on Unix
+ * - Possible secret values in environment variables (API keys, tokens, etc.)
+ *
  * Architecture note:
  * This lives in the Infrastructure layer because it reads from
  * the process environment (an OS-level concern).
@@ -22,6 +27,7 @@ import type {
   EnvCategory,
   PathEntry,
   EnvironmentInfo,
+  EnvSecurityRisk,
 } from '../../core/types/environment.js';
 
 /**
@@ -245,11 +251,133 @@ const KNOWN_VARIABLES: Array<{
   },
 ];
 
+// ── Security risk detection (ADR-0012) ───────────────────────────
+
+/**
+ * Variable name suffixes that commonly hold secrets.
+ * Checked case-insensitively against the full variable name.
+ */
+const SECRET_NAME_PATTERN = /(TOKEN|SECRET|KEY|PASSWORD|API_KEY|CREDENTIAL|AUTH|PASSWD|PASS)$/i;
+
+/**
+ * Well-known non-secret values to exclude from secret detection.
+ * These match the kinds of values developers legitimately set under
+ * variable names like NODE_ENV, BUILD_KEY, etc.
+ */
+const KNOWN_SAFE_VALUES = new Set([
+  'development', 'production', 'staging', 'test', 'true', 'false',
+  'yes', 'no', 'on', 'off', '0', '1', 'null', 'undefined',
+  'local', 'localhost', 'none', 'default',
+]);
+
+/**
+ * Determine whether a value looks like a token/secret.
+ * Heuristic: long (>16 chars), mostly alphanumeric, not a known safe value.
+ */
+function looksLikeSecret(value: string): boolean {
+  if (KNOWN_SAFE_VALUES.has(value.toLowerCase())) return false;
+  if (value.length < 16) return false;
+  // Must be mostly alphanumeric (tokens, JWTs, base64, hex)
+  const alphanumRatio = (value.match(/[a-zA-Z0-9\-_.=+/]/g)?.length ?? 0) / value.length;
+  return alphanumRatio > 0.75;
+}
+
+/**
+ * Detect security risks in PATH entries.
+ */
+function detectPathRisks(entries: PathEntry[]): EnvSecurityRisk[] {
+  const risks: EnvSecurityRisk[] = [];
+
+  // ── `.` or empty entry in PATH ──
+  const dotEntry = entries.find((e) => e.path === '.' || e.path === '');
+  if (dotEntry) {
+    risks.push({
+      severity: 'fail',
+      category: 'path',
+      title: 'Current directory (.) in PATH',
+      detail:
+        `PATH entry #${dotEntry.index + 1} is "." (the current working directory). ` +
+        'This means running any command from a directory that contains an executable ' +
+        'with the same name will execute that local file instead of the system binary. ' +
+        'This is a known privilege escalation and supply-chain attack vector.',
+      suggestion:
+        'Remove "." from PATH in your shell profile (.bashrc, .zshrc, etc.) ' +
+        'or system environment variables.',
+    });
+  }
+
+  // ── World-writable PATH entries (Unix only) ──
+  if (process.platform !== 'win32') {
+    for (const entry of entries) {
+      if (!entry.exists) continue;
+      try {
+        const stat = fs.statSync(entry.path);
+        // eslint-disable-next-line no-bitwise
+        const worldWritable = (stat.mode & 0o002) !== 0;
+        if (worldWritable) {
+          risks.push({
+            severity: 'warn',
+            category: 'path',
+            title: `World-writable PATH directory: ${entry.path}`,
+            detail:
+              `The directory "${entry.path}" (PATH entry #${entry.index + 1}) is writable ` +
+              'by any user on the system. An unprivileged attacker could plant an executable ' +
+              'in this directory that shadows a system command.',
+            suggestion:
+              `Fix the permissions: chmod o-w "${entry.path}" ` +
+              'or remove this entry from PATH if it is not needed.',
+          });
+        }
+      } catch {
+        // Stat failed (permissions, broken symlink) — skip silently
+      }
+    }
+  }
+
+  return risks;
+}
+
+/**
+ * Detect variables whose names suggest they hold secrets and whose
+ * values look like tokens or credentials.
+ *
+ * ADR-0012: The *value* is never included in the output — only the variable
+ * name and a characterization of the value (length and pattern).
+ */
+function detectSecretRisks(env: NodeJS.ProcessEnv): EnvSecurityRisk[] {
+  const risks: EnvSecurityRisk[] = [];
+
+  for (const [name, value] of Object.entries(env)) {
+    if (!value) continue;
+    if (!SECRET_NAME_PATTERN.test(name)) continue;
+    if (!looksLikeSecret(value)) continue;
+
+    risks.push({
+      severity: 'warn',
+      category: 'secret',
+      title: `Possible secret in environment: ${name}`,
+      detail:
+        `"${name}" has a name matching a common secret pattern and its value ` +
+        `is ${value.length} characters long with a token-like structure. ` +
+        'Secrets set as environment variables can be leaked via process listings, ' +
+        'crash reports, and debug logs.',
+      suggestion:
+        'Store secrets in a secrets manager, .env file (excluded from git), ' +
+        'or a tool like 1Password CLI / Vault rather than as persistent environment variables. ' +
+        'Remove it from your shell profile if it was added there.',
+    });
+  }
+
+  return risks;
+}
+
+// ── Public API ────────────────────────────────────────────────────
+
 /**
  * Scan the system environment and return categorized variables.
  *
  * @param includeAll - If true, include ALL environment variables, not just known dev ones
- * @returns Categorized environment variables
+ * @returns Categorized environment variables, PATH entries, and security risks
  */
 export function scanEnvironment(includeAll: boolean = false): EnvironmentInfo {
   const env = process.env;
@@ -258,8 +386,6 @@ export function scanEnvironment(includeAll: boolean = false): EnvironmentInfo {
   // Collect known variables
   const variables: EnvVariable[] = KNOWN_VARIABLES
     .filter((def) => {
-      // In "known only" mode, only show variables that are actually set
-      // In "all" mode, show all known definitions
       if (includeAll) return true;
       return env[def.name] !== undefined;
     })
@@ -290,10 +416,17 @@ export function scanEnvironment(includeAll: boolean = false): EnvironmentInfo {
   // Parse PATH entries
   const pathEntries = parsePath(env.PATH ?? env.Path ?? '');
 
+  // Detect security risks (ADR-0012)
+  const securityRisks: EnvSecurityRisk[] = [
+    ...detectPathRisks(pathEntries),
+    ...detectSecretRisks(env),
+  ];
+
   return {
     variables,
     pathEntries,
     totalVarCount,
+    securityRisks,
   };
 }
 

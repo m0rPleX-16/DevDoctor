@@ -12,6 +12,12 @@
  * 3. **Testability** — Easy to mock in unit tests
  * 4. **Transparency** — Follows the "show what you're executing" principle
  *
+ * Security note (ADR-0009):
+ * On Windows, many commands (npm, npx, etc.) are .cmd batch files that require
+ * shell execution. We retain exec() shell mode on Windows but sanitize all
+ * arguments before building the command string to prevent shell metacharacter
+ * injection. On Unix, execFile() is used without a shell.
+ *
  * Architecture note:
  * This lives in the Infrastructure layer. It's the only layer that
  * directly interacts with the operating system's process APIs.
@@ -63,6 +69,38 @@ export interface CommandOptions {
   shell?: boolean;
 }
 
+// ── Security: argument sanitization ──────────────────────────────
+
+/**
+ * Characters that are meaningful to cmd.exe and could enable shell injection.
+ * We strip these when building the shell command string on Windows.
+ *
+ * ADR-0009: The stripping approach is used rather than allowlisting so that
+ * legitimate paths with spaces are not broken. Only genuine metacharacters
+ * that have no place in the argument values we construct are removed.
+ */
+const WINDOWS_SHELL_METACHARACTERS = /[&|<>^`\n\r]/g;
+
+/**
+ * Sanitize a single argument for safe inclusion in a Windows shell command string.
+ *
+ * - Strips cmd.exe metacharacters that could break out of the intended command.
+ * - Wraps in double quotes if the argument contains spaces.
+ * - Escapes any remaining double quotes inside the value.
+ *
+ * @param arg - The raw argument string
+ */
+function sanitizeWindowsArg(arg: string): string {
+  // Strip shell metacharacters
+  const clean = arg.replace(WINDOWS_SHELL_METACHARACTERS, '');
+
+  // Escape internal double quotes, then wrap if spaces present
+  const escaped = clean.replace(/"/g, '\\"');
+  return escaped.includes(' ') ? `"${escaped}"` : escaped;
+}
+
+// ── Public API ────────────────────────────────────────────────────
+
 /**
  * Execute a system command safely and return a structured result.
  *
@@ -94,20 +132,16 @@ export async function runCommand(
   const startTime = performance.now();
 
   try {
-    // When using shell mode, use exec() with a joined command string
-    // to avoid Node.js DEP0190 deprecation warning.
-    // When not using shell mode, use execFile() for better security.
     const execOptions = { timeout: timeoutMs, cwd, windowsHide: true };
 
     const { stdout, stderr } = shell
-      ? await execAsync(
-          [
-            command,
-            ...args.map((arg) => (arg.includes(' ') ? `"${arg}"` : arg)),
-          ].join(' '),
+      ? // Shell mode (Windows): sanitize args before building command string (ADR-0009)
+        await execAsync(
+          [command, ...args.map(sanitizeWindowsArg)].join(' '),
           execOptions,
         )
-      : await execFileAsync(command, args, {
+      : // Non-shell mode (Unix): execFile avoids the shell entirely
+        await execFileAsync(command, args, {
           ...execOptions,
           shell: false,
         });

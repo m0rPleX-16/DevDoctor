@@ -24,7 +24,7 @@ import {
   connector,
   statusBadge,
 } from '../ui/formatter.js';
-import { ENV_CATEGORY_LABELS, type EnvCategory, type EnvVariable } from '../../core/types/environment.js';
+import { ENV_CATEGORY_LABELS, type EnvCategory, type EnvVariable, type EnvSecurityRisk } from '../../core/types/environment.js';
 
 /** Icons for each environment category */
 const CATEGORY_ICONS: Record<EnvCategory, string> = {
@@ -89,6 +89,28 @@ function renderPath(entries: Array<{ path: string; index: number; exists: boolea
 }
 
 /**
+ * Render the security risks section (ADR-0012).
+ * Only called when at least one risk was detected.
+ */
+function renderSecurityRisks(risks: EnvSecurityRisk[]): void {
+  console.log();
+  console.log(sectionHeader('Security Risks', '🔒'));
+  console.log(connector());
+  console.log(`  ${theme.muted('│')}  ${theme.warning(`${risks.length} risk(s) detected in your environment.`)}`);
+  console.log(connector());
+
+  for (const risk of risks) {
+    const badge = risk.severity === 'fail' ? statusBadge('fail') : statusBadge('warn');
+    const titleColor = risk.severity === 'fail' ? theme.error : theme.warning;
+
+    console.log(`  ${theme.muted('│')}  ${badge}  ${titleColor(risk.title)}`);
+    console.log(`  ${theme.muted('│')}     ${theme.muted(risk.detail)}`);
+    console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')('💡 ' + risk.suggestion)}`);
+    console.log(connector());
+  }
+}
+
+/**
  * Create the `env` command.
  */
 export function createEnvCommand(): Command {
@@ -111,6 +133,9 @@ export function createEnvCommand(): Command {
       // PATH-only mode
       if (options.path) {
         renderPath(envInfo.pathEntries);
+        if (envInfo.securityRisks.filter((r) => r.category === 'path').length > 0) {
+          renderSecurityRisks(envInfo.securityRisks.filter((r) => r.category === 'path'));
+        }
         console.log();
         console.log(`  ${hr(undefined, 48)}`);
         console.log();
@@ -147,6 +172,11 @@ export function createEnvCommand(): Command {
 
       // Always show PATH breakdown
       renderPath(envInfo.pathEntries);
+
+      // Security risks section (ADR-0012) — only shown when risks exist
+      if (envInfo.securityRisks.length > 0) {
+        renderSecurityRisks(envInfo.securityRisks);
+      }
 
       console.log();
       console.log(`  ${hr(undefined, 48)}`);
