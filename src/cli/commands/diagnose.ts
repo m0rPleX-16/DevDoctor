@@ -16,67 +16,49 @@ import chalk from 'chalk';
 import type { DiagnosticEngine } from '../../core/engine/diagnostic-engine.js';
 import type { DiagnosticCheck } from '../../core/types/diagnostic.js';
 import { createSpinner } from '../ui/spinner.js';
-import { logger } from '../ui/logger.js';
-
-/**
- * Map a check status to a styled icon for terminal display.
- */
-function statusIcon(status: DiagnosticCheck['status']): string {
-  switch (status) {
-    case 'pass':
-      return chalk.green('✓');
-    case 'warn':
-      return chalk.yellow('⚠');
-    case 'fail':
-      return chalk.red('✗');
-    case 'skip':
-      return chalk.dim('○');
-  }
-}
-
-/**
- * Style the check label based on its status.
- */
-function styledLabel(label: string, status: DiagnosticCheck['status']): string {
-  switch (status) {
-    case 'pass':
-      return chalk.green(label);
-    case 'warn':
-      return chalk.yellow(label);
-    case 'fail':
-      return chalk.red(label);
-    case 'skip':
-      return chalk.dim(label);
-  }
-}
+import { showCompactBanner } from '../ui/banner.js';
+import {
+  theme,
+  hr,
+  statusBadge,
+  statusColor,
+  statusLine,
+  connector,
+} from '../ui/formatter.js';
 
 /**
  * Render a single diagnostic check result to the terminal.
  */
-function renderCheck(check: DiagnosticCheck, verbose: boolean): void {
-  // Status line: icon + label + message
-  console.log(`  ${statusIcon(check.status)} ${styledLabel(check.label, check.status)}`);
-  logger.detail(check.message);
+function renderCheck(check: DiagnosticCheck, verbose: boolean, isLast: boolean): void {
+  const badge = statusBadge(check.status);
+  const label = statusColor(check.label, check.status);
+  const treeLine = isLast ? theme.muted('└─') : theme.muted('├─');
+  const treeIndent = isLast ? '   ' : theme.muted('│') + '  ';
+
+  // Status line: tree connector + icon + label
+  console.log(`  ${treeLine} ${badge}  ${label}`);
+  console.log(`  ${treeIndent} ${theme.muted(check.message)}`);
 
   // Show educational detail if verbose or if the check didn't pass
   if (verbose || check.status !== 'pass') {
     if (check.detail) {
-      logger.newline();
-      // Indent detail text for readability
+      console.log(`  ${treeIndent}`);
       const lines = check.detail.split('\n');
       for (const line of lines) {
-        logger.detail(line);
+        console.log(`  ${treeIndent} ${theme.muted(line)}`);
       }
     }
   }
 
   // Show suggestion for non-passing checks
   if (check.suggestion && check.status !== 'pass') {
-    logger.newline();
-    logger.suggestion(check.suggestion);
+    console.log(`  ${treeIndent}`);
+    console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
   }
 
-  logger.newline();
+  if (!isLast) {
+    console.log(`  ${theme.muted('│')}`);
+  }
 }
 
 /**
@@ -93,6 +75,8 @@ export function createDiagnoseCommand(engine: DiagnosticEngine): Command {
     .action(async (pluginName: string, options: { verbose?: boolean }) => {
       const verbose = options.verbose ?? false;
 
+      showCompactBanner();
+
       // Show spinner while running diagnostics
       const spinner = createSpinner(`Running ${pluginName} diagnostics...`);
 
@@ -100,66 +84,68 @@ export function createDiagnoseCommand(engine: DiagnosticEngine): Command {
 
       if (!result) {
         spinner.fail(`Unknown plugin: "${pluginName}"`);
-        logger.newline();
-        logger.info('Available plugins:');
+        console.log();
+        console.log(`  ${theme.muted('Available plugins:')}`);
 
         const available = engine.getAvailablePlugins();
         for (const name of available) {
-          logger.detail(`devdoctor diagnose ${name}`);
+          console.log(`    ${theme.primary('›')} ${chalk.white(`devdoctor diagnose ${name}`)}`);
         }
 
-        logger.newline();
+        console.log();
         process.exitCode = 1;
         return;
       }
 
-      // Clear spinner and show results
-      const statusText =
-        result.overallStatus === 'pass'
-          ? chalk.green('All checks passed')
-          : result.overallStatus === 'warn'
-            ? chalk.yellow('Warnings detected')
-            : chalk.red('Issues found');
-
       spinner.stop();
 
-      logger.header(`${result.displayName} Diagnostics`);
-      console.log(`  ${chalk.dim('Status:')} ${statusText}`);
-      console.log(`  ${chalk.dim('Checks:')} ${result.checks.length}`);
-      console.log(`  ${chalk.dim('Duration:')} ${result.durationMs}ms`);
-      logger.newline();
-      logger.divider();
-      logger.newline();
+      // Title bar
+      console.log();
+      console.log(`  ${hr(result.displayName + ' Diagnostics', 48)}`);
+      console.log();
 
-      // Render each check
-      for (const check of result.checks) {
-        renderCheck(check, verbose);
+      // Summary stats line
+      const statusText =
+        result.overallStatus === 'pass'
+          ? statusLine('pass', 'All checks passed')
+          : result.overallStatus === 'warn'
+            ? statusLine('warn', 'Warnings detected')
+            : statusLine('fail', 'Issues found');
+
+      console.log(`  ${statusText}  ${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`);
+      console.log();
+
+      // Render each check in a tree layout
+      for (let i = 0; i < result.checks.length; i++) {
+        const isLast = i === result.checks.length - 1;
+        renderCheck(result.checks[i], verbose, isLast);
       }
 
-      // Summary footer
-      logger.divider();
-      logger.newline();
+      // Footer
+      console.log();
+      console.log(`  ${hr(undefined, 48)}`);
+      console.log();
 
       const passCount = result.checks.filter((c) => c.status === 'pass').length;
       const warnCount = result.checks.filter((c) => c.status === 'warn').length;
       const failCount = result.checks.filter((c) => c.status === 'fail').length;
 
       const summary = [
-        chalk.green(`${passCount} passed`),
-        warnCount > 0 ? chalk.yellow(`${warnCount} warnings`) : null,
-        failCount > 0 ? chalk.red(`${failCount} failed`) : null,
+        theme.success(`${passCount} passed`),
+        warnCount > 0 ? theme.warning(`${warnCount} warnings`) : null,
+        failCount > 0 ? theme.error(`${failCount} failed`) : null,
       ]
         .filter(Boolean)
-        .join(chalk.dim(' · '));
+        .join(theme.muted(' · '));
 
       console.log(`  ${summary}`);
-      logger.newline();
+      console.log();
 
       if (!verbose && result.checks.some((c) => c.status === 'pass')) {
-        logger.detail(
-          'Tip: Use --verbose to see detailed explanations for all checks.',
+        console.log(
+          `  ${theme.muted('Tip: Use')} ${chalk.white('--verbose')} ${theme.muted('to see detailed explanations for all checks.')}`,
         );
-        logger.newline();
+        console.log();
       }
 
       // Set exit code based on result

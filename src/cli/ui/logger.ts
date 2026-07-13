@@ -15,48 +15,49 @@
  */
 
 import chalk from 'chalk';
+import { theme, hr } from './formatter.js';
 
 export const logger = {
   /** A successful outcome — green with a checkmark */
   success(message: string): void {
-    console.log(chalk.green(`  ✓ ${message}`));
+    console.log(theme.success(`  ✓ ${message}`));
   },
 
   /** A warning that something may be wrong — yellow with a triangle */
   warn(message: string): void {
-    console.log(chalk.yellow(`  ⚠ ${message}`));
+    console.log(theme.warning(`  ⚠ ${message}`));
   },
 
   /** An error or failure — red with an X */
   error(message: string): void {
-    console.log(chalk.red(`  ✗ ${message}`));
+    console.log(theme.error(`  ✗ ${message}`));
   },
 
   /** Informational message — cyan with a bullet */
   info(message: string): void {
-    console.log(chalk.cyan(`  ● ${message}`));
+    console.log(theme.primary(`  ● ${message}`));
   },
 
   /** Detailed/secondary information — dimmed text, indented */
   detail(message: string): void {
-    console.log(chalk.dim(`    ${message}`));
+    console.log(theme.muted(`    ${message}`));
   },
 
   /** A suggestion or recommendation — magenta with a lightbulb */
   suggestion(message: string): void {
-    console.log(chalk.magenta(`  💡 ${message}`));
+    console.log(chalk.hex('#A78BFA')(`  💡 ${message}`));
   },
 
-  /** A styled header/title */
+  /** A styled section header with optional label */
   header(message: string): void {
     console.log();
-    console.log(chalk.bold.underline(message));
+    console.log(`  ${hr(message, 48)}`);
     console.log();
   },
 
   /** A horizontal divider line */
   divider(): void {
-    console.log(chalk.dim('  ─'.repeat(25)));
+    console.log(`  ${hr(undefined, 48)}`);
   },
 
   /** Raw line with no styling */

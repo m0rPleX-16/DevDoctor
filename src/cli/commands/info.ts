@@ -4,23 +4,23 @@
  * The `devdoctor info` command.
  *
  * Displays comprehensive system information in a styled, readable format.
- * This is useful for quickly understanding the current development
- * environment without needing to remember platform-specific commands.
+ * Uses section headers with accent bars and consistent field alignment
+ * for a polished, professional look.
  */
 
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { collectSystemInfo, formatBytes, formatUptime } from '../../infra/system/system-info-collector.js';
 import { createSpinner } from '../ui/spinner.js';
-import { logger } from '../ui/logger.js';
-
-/**
- * Render a key-value pair with consistent alignment.
- */
-function renderField(label: string, value: string, labelWidth: number = 16): void {
-  const paddedLabel = label.padEnd(labelWidth);
-  console.log(`  ${chalk.dim(paddedLabel)} ${value}`);
-}
+import { showCompactBanner } from '../ui/banner.js';
+import {
+  theme,
+  hr,
+  sectionHeader,
+  field,
+  connector,
+  progressBar,
+} from '../ui/formatter.js';
 
 /**
  * Create the `info` command.
@@ -31,53 +31,55 @@ export function createInfoCommand(): Command {
   return new Command('info')
     .description('Display system and environment information.')
     .action(async () => {
+      showCompactBanner();
+
       const spinner = createSpinner('Collecting system information...');
 
       const info = await collectSystemInfo();
 
       spinner.stop();
 
+      console.log();
+      console.log(`  ${hr('System Information', 48)}`);
+
       // Operating System section
-      logger.header('Operating System');
-      renderField('Platform', info.os.name);
-      renderField('Architecture', info.os.architecture);
-      renderField('Uptime', formatUptime(info.os.uptimeSeconds));
+      console.log();
+      console.log(sectionHeader('Operating System', '💻'));
+      console.log(connector());
+      console.log(field('Platform', info.os.name));
+      console.log(field('Architecture', info.os.architecture));
+      console.log(field('Uptime', formatUptime(info.os.uptimeSeconds)));
 
       // CPU section
-      logger.header('CPU');
-      renderField('Model', info.cpu.model);
-      renderField('Cores', `${info.cpu.cores} logical cores`);
+      console.log();
+      console.log(sectionHeader('CPU', '⚡'));
+      console.log(connector());
+      console.log(field('Model', info.cpu.model));
+      console.log(field('Cores', `${info.cpu.cores} logical cores`));
 
       // Memory section
-      logger.header('Memory');
-      renderField('Total', formatBytes(info.memory.totalBytes));
-      renderField('Used', formatBytes(info.memory.usedBytes));
-      renderField('Free', formatBytes(info.memory.freeBytes));
-      renderField('Usage', `${info.memory.usagePercent}%`);
-
-      // Create a simple memory usage bar
-      const barLength = 30;
-      const filledLength = Math.round((info.memory.usagePercent / 100) * barLength);
-      const emptyLength = barLength - filledLength;
-      const usageColor =
-        info.memory.usagePercent > 90
-          ? chalk.red
-          : info.memory.usagePercent > 70
-            ? chalk.yellow
-            : chalk.green;
-      const bar =
-        usageColor('█'.repeat(filledLength)) + chalk.dim('░'.repeat(emptyLength));
-      console.log(`  ${''.padEnd(16)} [${bar}]`);
+      console.log();
+      console.log(sectionHeader('Memory', '🧠'));
+      console.log(connector());
+      console.log(field('Total', formatBytes(info.memory.totalBytes)));
+      console.log(field('Used', formatBytes(info.memory.usedBytes)));
+      console.log(field('Free', formatBytes(info.memory.freeBytes)));
+      console.log(connector());
+      console.log(`  ${theme.muted('│')}  ${progressBar(info.memory.usagePercent)}`);
 
       // Runtime section
-      logger.header('Runtime');
-      renderField('Node.js', info.runtime.nodeVersion);
+      console.log();
+      console.log(sectionHeader('Runtime', '🔧'));
+      console.log(connector());
+      console.log(field('Node.js', info.runtime.nodeVersion));
       if (info.runtime.npmVersion) {
-        renderField('npm', `v${info.runtime.npmVersion}`);
+        console.log(field('npm', `v${info.runtime.npmVersion}`));
       }
-      renderField('Working Dir', info.runtime.cwd);
-      renderField('Home Dir', info.runtime.homeDir);
+      console.log(field('Working Dir', info.runtime.cwd));
+      console.log(field('Home Dir', info.runtime.homeDir));
 
-      logger.newline();
+      console.log();
+      console.log(`  ${hr(undefined, 48)}`);
+      console.log();
     });
 }
