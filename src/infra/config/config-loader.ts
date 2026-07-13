@@ -186,10 +186,23 @@ export function getUserConfigPath(): string {
  * Write a config object to the project config file.
  * Creates the file if it doesn't exist. Merges with existing content.
  *
+ * Fix #6: validates that the resolved config path stays within process.cwd()
+ * to match the containment check already applied in writeReport() (ADR-0009).
+ *
  * @param config - The config to write (partial — only specified fields are written)
  */
 export function writeProjectConfig(config: DevDoctorConfig): void {
   const configPath = getProjectConfigPath();
+
+  // Path containment check — consistent with renderer-factory.ts writeReport()
+  const safeRoot = path.resolve(process.cwd());
+  const resolved = path.resolve(configPath);
+  if (!resolved.startsWith(safeRoot + path.sep) && resolved !== safeRoot) {
+    throw new Error(
+      `Config path "${resolved}" escapes the project directory "${safeRoot}".`,
+    );
+  }
+
   const existing = readConfigFile(configPath);
   const merged = mergeConfigs(existing, config);
 

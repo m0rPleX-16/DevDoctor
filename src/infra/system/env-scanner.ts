@@ -442,10 +442,15 @@ export function scanEnvironment(includeAll: boolean = false): EnvironmentInfo {
  */
 export function parsePath(pathValue: string): PathEntry[] {
   const separator = process.platform === 'win32' ? ';' : ':';
-  const entries = pathValue.split(separator).filter(Boolean);
+  // Fix #4: do NOT filter out empty strings here — an empty entry (from `;;`
+  // or a leading/trailing separator) resolves to the current directory, which
+  // is a security risk (ADR-0012). We keep it so detectPathRisks() can flag it.
+  const entries = pathValue.split(separator);
 
   return entries.map((entry, index) => {
-    const normalizedPath = path.normalize(entry.trim());
+    // Trim whitespace; treat a blank entry as "." (current directory)
+    const raw = entry.trim();
+    const normalizedPath = raw === '' ? '.' : path.normalize(raw);
     let exists = false;
 
     try {

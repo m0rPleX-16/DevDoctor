@@ -15,6 +15,10 @@
  *
  * ADR-0011:
  * - All repair/verify/rollback actions are logged to ~/.devdoctor/history.json.
+ *
+ * 0.2.1 fixes:
+ * - Removed dead code (unused plugin/pluginRef/repairableIssues variables).
+ * - canRepair() is now consulted via the registry for accurate pre-filtering.
  */
 
 import fs from 'node:fs';
@@ -58,7 +62,6 @@ function acquireLock(): () => void {
       const content = fs.readFileSync(LOCK_FILE, 'utf-8').trim();
       const lockedPid = parseInt(content, 10);
 
-      // If the PID in the lockfile is no longer running, the lock is stale
       let processRunning = false;
       try {
         process.kill(lockedPid, 0); // Signal 0 = existence check, no signal sent
@@ -99,10 +102,6 @@ function acquireLock(): () => void {
 
 // ── Confirmation prompt ───────────────────────────────────────────
 
-/**
- * Prompt the user for confirmation via console input.
- * Only called when --yes is not set and stdin is a TTY.
- */
 async function askConfirmation(query: string): Promise<boolean> {
   const rl = readline.createInterface({ input, output });
   try {
@@ -143,8 +142,7 @@ export function createFixCommand(
         console.log(`  ${theme.error(`✖ Unknown plugin: "${pluginName}"`)}`);
         console.log();
         console.log(`  ${theme.muted('Available plugins:')}`);
-        const available = engine.getAvailablePlugins();
-        for (const name of available) {
+        for (const name of engine.getAvailablePlugins()) {
           console.log(`    ${theme.primary('›')} ${chalk.white(`devdoctor fix ${name}`)}`);
         }
         console.log();
@@ -152,29 +150,20 @@ export function createFixCommand(
         return;
       }
 
-      // ── ADR-0010: TTY guard ──
-      // When stdin is not an interactive terminal and neither --yes nor
-      // --dry-run is provided, the readline prompt would hang forever.
-      // Fail fast with a clear message instead.
+      // ADR-0010: TTY guard
       if (!autoConfirm && !dryRun && !process.stdin.isTTY) {
         console.log();
-        console.log(
-          `  ${theme.error('✖ Interactive mode requires a TTY.')}`,
-        );
-        console.log(
-          `  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to auto-confirm repairs in non-interactive environments:')}`,
-        );
+        console.log(`  ${theme.error('✖ Interactive mode requires a TTY.')}`);
+        console.log(`  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to auto-confirm repairs in non-interactive environments:')}`);
         console.log(`    ${chalk.cyan(`devdoctor fix ${pluginName} --yes`)}`);
-        console.log(
-          `  ${theme.muted('Use')} ${chalk.white('--dry-run')} ${theme.muted('to preview what would be repaired:')}`,
-        );
+        console.log(`  ${theme.muted('Use')} ${chalk.white('--dry-run')} ${theme.muted('to preview what would be repaired:')}`);
         console.log(`    ${chalk.cyan(`devdoctor fix ${pluginName} --dry-run`)}`);
         console.log();
         process.exitCode = 1;
         return;
       }
 
-      // ── Acquire lockfile (skip in dry-run — no changes are made) ──
+      // Acquire lockfile (skip in dry-run — no changes are made)
       let releaseLock: (() => void) | undefined;
       if (!dryRun) {
         try {
@@ -189,28 +178,24 @@ export function createFixCommand(
       }
 
       try {
-        await runFix(pluginName, plugin.displayName, options, autoConfirm, dryRun, engine, repairEngine);
+        await runFix(pluginName, plugin.displayName, autoConfirm, dryRun, registry, engine, repairEngine);
       } finally {
         releaseLock?.();
       }
     });
 }
 
-// ── Core fix logic (extracted for lockfile try/finally) ──────────
+// ── Core fix logic ────────────────────────────────────────────────
 
 async function runFix(
   pluginName: string,
   displayName: string,
-  options: FixOptions,
   autoConfirm: boolean,
   dryRun: boolean,
+  registry: PluginRegistry,
   engine: DiagnosticEngine,
   repairEngine: RepairEngine,
 ): Promise<void> {
-  const plugin = engine['registry' as keyof typeof engine]
-    ? undefined
-    : undefined; // not used directly — we use the registry via repairEngine
-
   const diagSpinner = createSpinner(`Diagnosing ${displayName}...`);
   const result = await engine.runDiagnostics(pluginName);
   diagSpinner.stop();
@@ -224,26 +209,18 @@ async function runFix(
 
   const issues = result.checks.filter((c) => c.status === 'fail' || c.status === 'warn');
 
-  // Determine which checks have repair support by asking the plugin
-  const pluginRef = repairEngine['registry' as keyof typeof repairEngine];
-  // Access the plugin via the registry that the RepairEngine holds.
-  // We need canRepair() which is on the Plugin itself — use the result from engine.
+  // Fix #2: consult canRepair() from the actual plugin instance.
+  // Previously this was bypassed with a `status === 'fail'` heuristic,
+  // meaning plugins that explicitly declare canRepair() === false were
+  // still offered as repairs.
+  const plugin = registry.get(pluginName);
   const repairableIssues = issues.filter((c) => {
-    // We still need canRepair from the plugin; RepairEngine wraps repair/verify/rollback
-    // but canRepair() is a sync predicate on the plugin itself.
-    // Re-retrieve the plugin from the engine to call canRepair.
-    return true; // filter happens below after we retrieve the plugin
+    if (plugin?.canRepair) {
+      return plugin.canRepair(c.name);
+    }
+    // Fallback for plugins that don't implement canRepair: only fail-status checks
+    return c.status === 'fail';
   });
-
-  // Actually filter using canRepair from the plugin instance
-  // We retrieve it from the registry held by DiagnosticEngine indirectly —
-  // the registry was passed to both engines at the composition root.
-  // Since we can't reach registry here, we rely on the fact that RepairEngine
-  // will handle unknown checkNames gracefully (returning success: false).
-  // The canRepair gate is applied by checking result at repair time.
-  // For UX, we pre-filter using the heuristic: fail status = repairable.
-  // Plugins that don't support repair return a clear "not supported" message.
-  const actuallyRepairable = issues.filter((c) => c.status === 'fail');
 
   console.log();
   console.log(`  ${hr(displayName + ' Repairs', 48)}`);
@@ -262,12 +239,12 @@ async function runFix(
     return;
   }
 
-  if (actuallyRepairable.length === 0) {
+  if (repairableIssues.length === 0) {
     console.log();
-    console.log(`  ${statusBadge('warn')}  ${theme.warning(`Found ${issues.length} warning(s), but none have automated repairs.`)}`);
+    console.log(`  ${statusBadge('warn')}  ${theme.warning(`Found ${issues.length} issue(s), but none have automated repairs.`)}`);
     console.log();
     for (const check of issues) {
-      console.log(`  ${theme.muted('├─')} ${statusBadge('warn')}  ${statusColor(check.label, 'warn')}`);
+      console.log(`  ${theme.muted('├─')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
       console.log(`  ${theme.muted('│')}     ${theme.muted(check.message)}`);
       if (check.suggestion) {
         console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
@@ -281,14 +258,14 @@ async function runFix(
 
   console.log();
   if (dryRun) {
-    console.log(`  ${theme.primary(`ℹ ${actuallyRepairable.length} repair(s) would be applied:`)}`);
+    console.log(`  ${theme.primary(`ℹ ${repairableIssues.length} repair(s) would be applied:`)}`);
   } else {
-    console.log(`  ${theme.warning(`⚠ Found ${actuallyRepairable.length} repairable issue(s).`)}`);
+    console.log(`  ${theme.warning(`⚠ Found ${repairableIssues.length} repairable issue(s).`)}`);
   }
 
-  if (issues.length > actuallyRepairable.length) {
-    const warnCount = issues.length - actuallyRepairable.length;
-    console.log(`  ${theme.muted(`  (${warnCount} additional warning(s) have no automated repair — see diagnose output.)`)}`);
+  if (issues.length > repairableIssues.length) {
+    const unrepairable = issues.length - repairableIssues.length;
+    console.log(`  ${theme.muted(`  (${unrepairable} additional issue(s) have no automated repair — see diagnose output.)`)}`);
   }
   console.log();
 
@@ -296,7 +273,7 @@ async function runFix(
   let failCount = 0;
   let skipCount = 0;
 
-  for (const check of actuallyRepairable) {
+  for (const check of repairableIssues) {
     console.log(`  ${theme.primary('┃')}  ${statusColor(check.label, check.status)}`);
     console.log(`  ${theme.primary('│')}  Current state: ${theme.muted(check.message)}`);
     if (check.suggestion) {
@@ -304,7 +281,7 @@ async function runFix(
     }
     console.log(`  ${theme.primary('│')}`);
 
-    // In dry-run mode, just list the repair and move on
+    // Dry-run: list and skip
     if (dryRun) {
       console.log(`  ${theme.primary('│')}  ${statusBadge('skip')}  ${theme.muted('[Dry run] Would attempt this repair.')}`);
       console.log(`  ${theme.muted('└─ ○  Dry run — skipped.')}`);
@@ -313,11 +290,11 @@ async function runFix(
       continue;
     }
 
-    // ── Confirmation ──
+    // Confirmation
     if (!autoConfirm) {
-      const confirmQuery = `  ${theme.primary('👉')}  Do you want to attempt this repair? (y/N): `;
-      const confirmed = await askConfirmation(confirmQuery);
-
+      const confirmed = await askConfirmation(
+        `  ${theme.primary('👉')}  Do you want to attempt this repair? (y/N): `,
+      );
       if (!confirmed) {
         console.log(`  ${theme.primary('│')}`);
         console.log(`  ${theme.muted('└─ ○  Skipped repair.')}`);
@@ -331,10 +308,7 @@ async function runFix(
 
     console.log(`  ${theme.primary('│')}`);
     const repairSpinner = createSpinner(`Executing repair for ${check.label}...`);
-
-    // ── ADR-0010: route through RepairEngine ──
     const repairResult = await repairEngine.runRepair(pluginName, check.name, false);
-
     repairSpinner.stop();
 
     if (!repairResult.success) {
@@ -350,12 +324,10 @@ async function runFix(
       continue;
     }
 
-    // ── Post-repair verification ──
+    // Post-repair verification
     console.log(`  ${theme.primary('│')}  ${statusBadge('pass')}  ${repairResult.message}`);
-    const verifySpinner = createSpinner(`Verifying fix...`);
-
+    const verifySpinner = createSpinner('Verifying fix...');
     const verifyResult = await repairEngine.runVerification(pluginName, check.name, false);
-
     verifySpinner.stop();
 
     if (verifyResult.success) {
@@ -366,14 +338,11 @@ async function runFix(
       console.log(`  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Verification failed! The issue persists.')}`);
       console.log(`  ${theme.primary('│')}     ${theme.muted(verifyResult.message)}`);
 
-      // Attempt rollback if the repair indicated it is supported
       if (repairResult.rollbackSupported) {
         console.log(`  ${theme.primary('│')}`);
         console.log(`  ${theme.primary('│')}  ${theme.warning('↩  Repair flagged as rollback-supported. Attempting rollback...')}`);
         const rollbackSpinner = createSpinner('Rolling back...');
-
         const rollbackResult = await repairEngine.runRollback(pluginName, check.name, false);
-
         rollbackSpinner.stop();
 
         if (rollbackResult.success) {
@@ -390,13 +359,12 @@ async function runFix(
     console.log();
   }
 
-  // ── Summary ──
+  // Summary
   console.log(`  ${hr(undefined, 48)}`);
   console.log();
 
   if (dryRun) {
-    const total = actuallyRepairable.length;
-    console.log(`  ${theme.primary(`ℹ Dry run complete. ${total} repair(s) would be attempted.`)}`);
+    console.log(`  ${theme.primary(`ℹ Dry run complete. ${repairableIssues.length} repair(s) would be attempted.`)}`);
     console.log(`  ${theme.muted('Run without --dry-run to apply them.')}`);
   } else {
     const summaryParts = [
@@ -405,20 +373,14 @@ async function runFix(
       skipCount > 0 ? theme.muted(`${skipCount} skipped`) : null,
     ].filter(Boolean);
 
-    if (summaryParts.length === 0) {
-      console.log(`  ${theme.muted('No repairs were attempted.')}`);
-    } else {
+    if (summaryParts.length > 0) {
       console.log(`  ${summaryParts.join(theme.muted(' · '))}`);
+    } else {
+      console.log(`  ${theme.muted('No repairs were attempted.')}`);
     }
   }
   console.log();
 
-  if (failCount > 0) {
-    process.exitCode = 1;
-  }
-
-  // In dry-run mode, exit 1 if there were issues (useful for CI health checks)
-  if (dryRun && actuallyRepairable.length > 0) {
-    process.exitCode = 1;
-  }
+  if (failCount > 0) process.exitCode = 1;
+  if (dryRun && repairableIssues.length > 0) process.exitCode = 1;
 }

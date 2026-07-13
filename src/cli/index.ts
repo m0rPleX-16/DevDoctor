@@ -16,6 +16,7 @@
  */
 
 import { Command } from 'commander';
+import { createRequire } from 'node:module';
 import { showBanner } from './ui/banner.js';
 import { PluginRegistry } from '../plugins/plugin-registry.js';
 import { DiagnosticEngine } from '../core/engine/diagnostic-engine.js';
@@ -30,6 +31,11 @@ import { createDoctorCommand } from './commands/doctor.js';
 import { createFixCommand } from './commands/fix.js';
 import chalk from 'chalk';
 import { theme } from './ui/formatter.js';
+
+// Fix #8: read version from package.json so a version bump only needs
+// to touch one file, rather than package.json + this file.
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require('../../package.json') as { version: string };
 
 async function main(): Promise<void> {
   // ── Step 1: Load configuration ──
@@ -66,7 +72,7 @@ async function main(): Promise<void> {
       'A plugin-based CLI utility that diagnoses, explains, and safely repairs ' +
         'common development environment issues.',
     )
-    .version('0.2.0', '-V, --version', 'Display the current version');
+    .version(PKG_VERSION, '-V, --version', 'Display the current version');
 
   // Pass resolved config into commands that need format/output options
   program.addCommand(createDiagnoseCommand(engine, config));

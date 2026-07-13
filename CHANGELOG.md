@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.1] — 2026-07-13
+
+### Fixed
+
+- **Dead code removed from `fix.ts`** — Unused variables (`plugin`, `pluginRef`, `repairableIssues`, `c`) left over from the 0.2.0 RepairEngine refactor have been removed.
+- **`canRepair()` now correctly consulted** — The fix command previously bypassed `canRepair()` entirely and filtered repairs using a `status === 'fail'` heuristic. The plugin's `canRepair()` predicate is now called for each check, so plugins that explicitly return `false` for a check are no longer offered as repairs.
+- **Empty PATH entries now detected** — `parsePath()` was calling `.filter(Boolean)` which silently dropped empty entries (from `;;` or leading/trailing separators). These are now preserved as `'.'` so the security risk detector in `devdoctor env` can flag them correctly.
+- **Markdown report timestamps use local time** — `formatTimestamp()` in the Markdown renderer was calling `toISOString()` which always outputs UTC. Timestamps in saved reports now use locale-aware formatting with the local timezone name.
+- **`writeProjectConfig()` has a path traversal guard** — Consistent with `writeReport()`, the config writer now validates that the resolved output path stays within `process.cwd()` before writing.
+- **Version string no longer hardcoded in CLI** — `src/cli/index.ts` now reads the version from `package.json` via `createRequire`. A version bump now only requires changing `package.json`.
+
+---
+
 ## [0.2.0] — 2026-07-13
 
 ### Added
@@ -65,5 +78,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.2.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/m0rPleX-16/DevDoctor/releases/tag/v0.1.0
