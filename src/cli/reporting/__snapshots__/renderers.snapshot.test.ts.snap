@@ -1,0 +1,422 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`JsonRenderer snapshots > renderDiagnostic — all passing 1`] = `
+"{
+  "pluginName": "node",
+  "displayName": "Node.js",
+  "timestamp": "2026-07-13T12:00:00.000Z",
+  "durationMs": 42,
+  "checks": [
+    {
+      "name": "node-version",
+      "label": "Node.js Version",
+      "status": "pass",
+      "message": "Node.js v22.0.0 is installed. (LTS)",
+      "detail": "Node.js v22 is a Long Term Support release. LTS versions receive security updates for 30 months."
+    },
+    {
+      "name": "npm-version",
+      "label": "npm Version",
+      "status": "pass",
+      "message": "npm 10.0.0 is installed."
+    },
+    {
+      "name": "node-path",
+      "label": "Node.js PATH",
+      "status": "pass",
+      "message": "Node.js is on the PATH at /usr/local/bin/node.",
+      "detail": "The node binary is accessible from the system PATH."
+    }
+  ],
+  "overallStatus": "pass"
+}"
+`;
+
+exports[`JsonRenderer snapshots > renderDiagnostic — mixed pass/warn/fail 1`] = `
+"{
+  "pluginName": "node",
+  "displayName": "Node.js",
+  "timestamp": "2026-07-13T12:00:00.000Z",
+  "durationMs": 55,
+  "checks": [
+    {
+      "name": "node-version",
+      "label": "Node.js Version",
+      "status": "pass",
+      "message": "Node.js v22.0.0 is installed. (LTS)",
+      "detail": "Node.js v22 is LTS."
+    },
+    {
+      "name": "npm-version",
+      "label": "npm Version",
+      "status": "warn",
+      "message": "npm 9.0.0 may be outdated.",
+      "detail": "npm 9 is behind the current stable release.",
+      "suggestion": "Run npm install -g npm to upgrade."
+    },
+    {
+      "name": "node-path",
+      "label": "Node.js PATH",
+      "status": "fail",
+      "message": "Node.js not found on PATH.",
+      "detail": "The node binary could not be resolved.",
+      "suggestion": "Add the Node.js bin directory to your PATH."
+    }
+  ],
+  "overallStatus": "fail"
+}"
+`;
+
+exports[`JsonRenderer snapshots > renderDiagnostic — with dependsOn skipped checks 1`] = `
+"{
+  "pluginName": "redis",
+  "displayName": "Redis",
+  "timestamp": "2026-07-13T12:00:00.000Z",
+  "durationMs": 30,
+  "checks": [
+    {
+      "name": "redis-installation",
+      "label": "Redis Installation",
+      "status": "fail",
+      "message": "Redis is not installed or not found on the system PATH.",
+      "suggestion": "Install Redis from https://redis.io/download"
+    },
+    {
+      "name": "redis-port",
+      "label": "Redis Port (6379)",
+      "status": "skip",
+      "message": "Skipped — depends on \\"redis-installation\\" which did not pass.",
+      "dependsOn": [
+        "redis-installation"
+      ]
+    },
+    {
+      "name": "redis-ping",
+      "label": "Redis Connectivity",
+      "status": "skip",
+      "message": "Skipped — depends on \\"redis-installation\\" which did not pass.",
+      "dependsOn": [
+        "redis-installation",
+        "redis-port"
+      ]
+    }
+  ],
+  "overallStatus": "fail"
+}"
+`;
+
+exports[`JsonRenderer snapshots > renderDoctor — fully healthy 1`] = `
+"{
+  "diagnostics": [
+    {
+      "pluginName": "node",
+      "displayName": "Node.js",
+      "timestamp": "2026-07-13T12:00:00.000Z",
+      "durationMs": 42,
+      "checks": [
+        {
+          "name": "node-version",
+          "label": "Node.js Version",
+          "status": "pass",
+          "message": "Node.js v22.0.0 is installed. (LTS)",
+          "detail": "Node.js v22 is a Long Term Support release. LTS versions receive security updates for 30 months."
+        },
+        {
+          "name": "npm-version",
+          "label": "npm Version",
+          "status": "pass",
+          "message": "npm 10.0.0 is installed."
+        },
+        {
+          "name": "node-path",
+          "label": "Node.js PATH",
+          "status": "pass",
+          "message": "Node.js is on the PATH at /usr/local/bin/node.",
+          "detail": "The node binary is accessible from the system PATH."
+        }
+      ],
+      "overallStatus": "pass"
+    }
+  ],
+  "tools": [
+    {
+      "name": "Git",
+      "command": "git",
+      "version": "2.43.0",
+      "path": "/usr/bin/git",
+      "installed": true,
+      "category": "version-control"
+    }
+  ],
+  "health": {
+    "percentage": 100,
+    "status": "healthy",
+    "totalChecks": 3,
+    "passedChecks": 3,
+    "warningChecks": 0,
+    "failedChecks": 0
+  },
+  "timestamp": "2026-07-13T12:00:00.000Z",
+  "durationMs": 80
+}"
+`;
+
+exports[`JsonRenderer snapshots > renderDoctor — unhealthy with issues 1`] = `
+"{
+  "diagnostics": [
+    {
+      "pluginName": "node",
+      "displayName": "Node.js",
+      "timestamp": "2026-07-13T12:00:00.000Z",
+      "durationMs": 55,
+      "checks": [
+        {
+          "name": "node-version",
+          "label": "Node.js Version",
+          "status": "pass",
+          "message": "Node.js v22.0.0 is installed. (LTS)",
+          "detail": "Node.js v22 is LTS."
+        },
+        {
+          "name": "npm-version",
+          "label": "npm Version",
+          "status": "warn",
+          "message": "npm 9.0.0 may be outdated.",
+          "detail": "npm 9 is behind the current stable release.",
+          "suggestion": "Run npm install -g npm to upgrade."
+        },
+        {
+          "name": "node-path",
+          "label": "Node.js PATH",
+          "status": "fail",
+          "message": "Node.js not found on PATH.",
+          "detail": "The node binary could not be resolved.",
+          "suggestion": "Add the Node.js bin directory to your PATH."
+        }
+      ],
+      "overallStatus": "fail"
+    }
+  ],
+  "tools": [
+    {
+      "name": "Git",
+      "command": "git",
+      "version": "2.43.0",
+      "path": "/usr/bin/git",
+      "installed": true,
+      "category": "version-control"
+    },
+    {
+      "name": "Docker",
+      "command": "docker",
+      "installed": false,
+      "category": "container"
+    }
+  ],
+  "health": {
+    "percentage": 33,
+    "status": "unhealthy",
+    "totalChecks": 3,
+    "passedChecks": 1,
+    "warningChecks": 1,
+    "failedChecks": 1
+  },
+  "timestamp": "2026-07-13T12:00:00.000Z",
+  "durationMs": 120
+}"
+`;
+
+exports[`MarkdownRenderer snapshots > renderDiagnostic — all passing 1`] = `
+"# Node.js Diagnostics
+
+> Generated by **Dev Doctor** · 2026-07-13T12:00:00.000Z · 42ms
+
+## Summary
+
+| Overall | Checks | Passed | Warnings | Failed |
+|---------|--------|--------|----------|--------|
+| ✅ Pass | 3 | 3 | 0 | 0 |
+
+## Checks
+
+| Check | Status | Message |
+|-------|--------|---------|
+| Node.js Version | ✅ Pass | Node.js v22.0.0 is installed. (LTS) |
+| npm Version | ✅ Pass | npm 10.0.0 is installed. |
+| Node.js PATH | ✅ Pass | Node.js is on the PATH at /usr/local/bin/node. |
+"
+`;
+
+exports[`MarkdownRenderer snapshots > renderDiagnostic — mixed pass/warn/fail 1`] = `
+"# Node.js Diagnostics
+
+> Generated by **Dev Doctor** · 2026-07-13T12:00:00.000Z · 55ms
+
+## Summary
+
+| Overall | Checks | Passed | Warnings | Failed |
+|---------|--------|--------|----------|--------|
+| ❌ Fail | 3 | 1 | 1 | 1 |
+
+## Checks
+
+| Check | Status | Message |
+|-------|--------|---------|
+| Node.js Version | ✅ Pass | Node.js v22.0.0 is installed. (LTS) |
+| npm Version | ⚠️ Warn | npm 9.0.0 may be outdated. |
+| Node.js PATH | ❌ Fail | Node.js not found on PATH. |
+
+## Issues & Recommendations
+
+#### ⚠️ npm Version
+
+**Status:** Warn  
+**Message:** npm 9.0.0 may be outdated.
+
+<details>
+<summary>Detail</summary>
+
+npm 9 is behind the current stable release.
+</details>
+
+> 💡 **Suggestion:** Run npm install -g npm to upgrade.
+
+#### ❌ Node.js PATH
+
+**Status:** Fail  
+**Message:** Node.js not found on PATH.
+
+<details>
+<summary>Detail</summary>
+
+The node binary could not be resolved.
+</details>
+
+> 💡 **Suggestion:** Add the Node.js bin directory to your PATH.
+"
+`;
+
+exports[`MarkdownRenderer snapshots > renderDiagnostic — with dependsOn skipped checks 1`] = `
+"# Redis Diagnostics
+
+> Generated by **Dev Doctor** · 2026-07-13T12:00:00.000Z · 30ms
+
+## Summary
+
+| Overall | Checks | Passed | Warnings | Failed |
+|---------|--------|--------|----------|--------|
+| ❌ Fail | 3 | 0 | 0 | 1 |
+
+## Checks
+
+| Check | Status | Message |
+|-------|--------|---------|
+| Redis Installation | ❌ Fail | Redis is not installed or not found on the system PATH. |
+| Redis Port (6379) | ⏭️ Skip | Skipped — depends on "redis-installation" which did not pass. |
+| Redis Connectivity | ⏭️ Skip | Skipped — depends on "redis-installation" which did not pass. |
+
+## Issues & Recommendations
+
+#### ❌ Redis Installation
+
+**Status:** Fail  
+**Message:** Redis is not installed or not found on the system PATH.
+
+> 💡 **Suggestion:** Install Redis from https://redis.io/download
+
+#### ⏭️ Redis Port (6379)
+
+**Status:** Skip  
+**Message:** Skipped — depends on "redis-installation" which did not pass.
+
+#### ⏭️ Redis Connectivity
+
+**Status:** Skip  
+**Message:** Skipped — depends on "redis-installation" which did not pass.
+"
+`;
+
+exports[`MarkdownRenderer snapshots > renderDoctor — fully healthy (no issues section) 1`] = `
+"# Dev Doctor — Health Report
+
+> Generated · 2026-07-13T12:00:00.000Z · 80ms
+
+## Health Score
+
+**💚 Healthy** — 100%
+
+| Passed | Warnings | Failed | Total |
+|--------|----------|--------|-------|
+| 3 | 0 | 0 | 3 |
+
+## Plugin Diagnostics
+
+| Plugin | Status | Checks | Duration |
+|--------|--------|--------|----------|
+| Node.js | ✅ Pass | 3 | 42ms |
+
+## Development Tools
+
+| Tool | Status | Version |
+|------|--------|---------|
+| Git | ✅ Installed | v2.43.0 |
+"
+`;
+
+exports[`MarkdownRenderer snapshots > renderDoctor — unhealthy with issues 1`] = `
+"# Dev Doctor — Health Report
+
+> Generated · 2026-07-13T12:00:00.000Z · 120ms
+
+## Health Score
+
+**❤️ Unhealthy** — 33%
+
+| Passed | Warnings | Failed | Total |
+|--------|----------|--------|-------|
+| 1 | 1 | 1 | 3 |
+
+## Plugin Diagnostics
+
+| Plugin | Status | Checks | Duration |
+|--------|--------|--------|----------|
+| Node.js | ❌ Fail | 3 | 55ms |
+
+## Issues
+
+### Node.js
+
+#### ⚠️ npm Version
+
+**Status:** Warn  
+**Message:** npm 9.0.0 may be outdated.
+
+<details>
+<summary>Detail</summary>
+
+npm 9 is behind the current stable release.
+</details>
+
+> 💡 **Suggestion:** Run npm install -g npm to upgrade.
+
+#### ❌ Node.js PATH
+
+**Status:** Fail  
+**Message:** Node.js not found on PATH.
+
+<details>
+<summary>Detail</summary>
+
+The node binary could not be resolved.
+</details>
+
+> 💡 **Suggestion:** Add the Node.js bin directory to your PATH.
+
+## Development Tools
+
+| Tool | Status | Version |
+|------|--------|---------|
+| Git | ✅ Installed | v2.43.0 |
+| Docker | ⏭️ Not found | — |
+"
+`;

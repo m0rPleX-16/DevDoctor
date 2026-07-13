@@ -3,14 +3,17 @@ import type { Plugin } from '../core/types/plugin.js';
 import { NodePlugin } from './node/index.js';
 import { MysqlPlugin } from './mysql/index.js';
 import { GitPlugin } from './git/index.js';
+import { RedisPlugin } from './redis/index.js';
+import { PythonPlugin } from './python/index.js';
 
 /**
  * Generic test suite to validate that any Plugin implementation
  * satisfies the expected contract.
  *
- * @param plugin - The Plugin instance to test
+ * @param plugin  - The Plugin instance to test
+ * @param timeout - Optional timeout override for the diagnose() test (ms)
  */
-export function testPluginContract(plugin: Plugin) {
+export function testPluginContract(plugin: Plugin, timeout = 10_000) {
   describe(`Plugin Contract: ${plugin.name}`, () => {
     it('has required metadata properties', () => {
       expect(typeof plugin.name).toBe('string');
@@ -41,7 +44,7 @@ export function testPluginContract(plugin: Plugin) {
         expect(['pass', 'fail', 'warn', 'skip']).toContain(check.status);
         expect(typeof check.message).toBe('string');
       }
-    });
+    }, timeout);
 
     it('returns a valid RepairResult from repair()', async () => {
       const checkName = 'non-existent-check';
@@ -69,3 +72,5 @@ export function testPluginContract(plugin: Plugin) {
 testPluginContract(new NodePlugin());
 testPluginContract(new MysqlPlugin());
 testPluginContract(new GitPlugin());
+testPluginContract(new RedisPlugin());
+testPluginContract(new PythonPlugin(), 15_000);

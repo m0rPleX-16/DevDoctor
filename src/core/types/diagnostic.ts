@@ -52,6 +52,17 @@ export interface DiagnosticCheck {
    * Should be specific and actionable (e.g., "Run `nvm install 20` to install Node.js 20")
    */
   suggestion?: string;
+
+  /**
+   * Names of checks (by `name` field) that must have passed before this check
+   * should run. If any dependency check did not pass, this check is automatically
+   * skipped with a "skipped (dependency not met)" message.
+   *
+   * Example: a port check depends on the service installation check.
+   * If MySQL is not installed, checking port 3306 produces a confusing false
+   * negative. Declaring `dependsOn: ['mysql-service']` avoids that noise.
+   */
+  dependsOn?: string[];
 }
 
 /**

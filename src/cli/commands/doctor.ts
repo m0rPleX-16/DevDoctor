@@ -17,6 +17,7 @@ import type { DiagnosticEngine } from '../../core/engine/diagnostic-engine.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { DetectedTool, HealthStatus, DoctorResult } from '../../core/types/doctor-result.js';
 import type { ReportFormat, ResolvedConfig } from '../../core/types/config.js';
+import type { IHistoryStore } from '../../infra/audit/history-store.js';
 import { detectTools } from '../../infra/system/tool-detector.js';
 import { showCompactBanner } from '../ui/banner.js';
 import { createSpinner } from '../ui/spinner.js';
@@ -76,6 +77,7 @@ interface DoctorOptions {
 export function createDoctorCommand(
   engine: DiagnosticEngine,
   config?: ResolvedConfig,
+  historyStore?: IHistoryStore,
 ): Command {
   return new Command('doctor')
     .description('Run a full health check across all plugins and tools.')
@@ -113,6 +115,25 @@ export function createDoctorCommand(
           ? `Health check complete — ${issueCount} issue(s) found across ${diagnostics.length} plugin(s)`
           : `Health check complete — all ${diagnostics.length} plugin(s) healthy`,
       );
+
+      // Persist a lightweight history entry for `devdoctor history` trending
+      if (historyStore) {
+        const pluginSummary: Record<string, 'pass' | 'warn' | 'fail' | 'skip'> = {};
+        for (const d of diagnostics) {
+          pluginSummary[d.pluginName] = d.overallStatus;
+        }
+        historyStore.append({
+          timestamp: new Date().toISOString(),
+          percentage: health.percentage,
+          status: health.status,
+          totalChecks: health.totalChecks,
+          passedChecks: health.passedChecks,
+          warningChecks: health.warningChecks,
+          failedChecks: health.failedChecks,
+          durationMs,
+          pluginSummary,
+        });
+      }
 
       const doctorResult: DoctorResult = {
         diagnostics,

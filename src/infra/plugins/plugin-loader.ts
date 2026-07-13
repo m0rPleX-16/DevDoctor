@@ -41,11 +41,15 @@ import type { ResolvedConfig } from '../../core/types/config.js';
 import { NodePlugin } from '../../plugins/node/index.js';
 import { MysqlPlugin } from '../../plugins/mysql/index.js';
 import { GitPlugin } from '../../plugins/git/index.js';
+import { RedisPlugin } from '../../plugins/redis/index.js';
+import { PythonPlugin } from '../../plugins/python/index.js';
 
 const BUILTIN_PLUGINS: Plugin[] = [
   new NodePlugin(),
   new MysqlPlugin(),
   new GitPlugin(),
+  new RedisPlugin(),
+  new PythonPlugin(),
 ];
 
 // ── Runtime type guard ────────────────────────────────────────────

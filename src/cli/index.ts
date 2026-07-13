@@ -30,6 +30,9 @@ import { createEnvCommand } from './commands/env.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createFixCommand } from './commands/fix.js';
 import { createCompletionCommand } from './commands/completion.js';
+import { createHistoryCommand } from './commands/history.js';
+import { createRollbackCommand } from './commands/rollback.js';
+import { FileHistoryStore } from '../infra/audit/history-store.js';
 import { runInteractiveMenu } from './ui/interactive.js';
 import chalk from 'chalk';
 import { theme } from './ui/formatter.js';
@@ -64,6 +67,7 @@ async function main(): Promise<void> {
   // does not depend directly on the filesystem infrastructure.
   const auditLogger = new FileAuditLogger();
   const repairEngine = new RepairEngine(registry, auditLogger);
+  const historyStore = new FileHistoryStore();
 
   // ── Step 5: Set up Commander ──
   const program = new Command();
@@ -88,9 +92,11 @@ async function main(): Promise<void> {
   program.addCommand(createDiagnoseCommand(engine, config));
   program.addCommand(createInfoCommand());
   program.addCommand(createEnvCommand());
-  program.addCommand(createDoctorCommand(engine, config));
+  program.addCommand(createDoctorCommand(engine, config, historyStore));
   program.addCommand(createFixCommand(registry, engine, repairEngine));
   program.addCommand(createCompletionCommand('devdoctor'));
+  program.addCommand(createHistoryCommand(historyStore));
+  program.addCommand(createRollbackCommand(registry, repairEngine));
 
   program.addHelpText('before', () => {
     showBanner();
@@ -111,6 +117,10 @@ Examples:
   ${chalk.cyan('devdoctor fix mysql --dry-run')}
   ${chalk.cyan('devdoctor fix mysql --yes')}
   ${chalk.cyan('devdoctor doctor --format json')}
+  ${chalk.cyan('devdoctor rollback mysql mysql-service')}
+  ${chalk.cyan('devdoctor history --last 20')}
+  ${chalk.cyan('devdoctor diagnose redis')}
+  ${chalk.cyan('devdoctor diagnose python')}
 `;
   });
 

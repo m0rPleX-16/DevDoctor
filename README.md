@@ -4,23 +4,27 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.3.0**
+> Current version: **0.4.1**
 
 ---
 
 ## Features
 
-- **Diagnose** — Run health checks on Node.js, MySQL, and Git environments (or custom plugins)
+- **Diagnose** — Run health checks on Node.js, MySQL, Git, Redis, and Python environments (or custom plugins)
 - **Explain** — Detailed root causes and educational explanations for every check
 - **Repair** — Safe, confirmation-prompted automatic repairs with rollback support and state transition diff
+- **Rollback** — Explicitly undo a prior repair with `devdoctor rollback <plugin> <check>`
+- **History** — Timeline of past health check scores with trend arrows via `devdoctor history`
 - **CI-Ready** — `--yes` to auto-confirm repairs and `--dry-run` to preview without changes
 - **Audit Log** — Every repair action is recorded in `~/.devdoctor/history.json`
+- **Run History** — Every `doctor` run is recorded in `~/.devdoctor/runs.json` for trending
 - **Security Scan** — Detects dangerous PATH entries and suspected secrets in environment variables
 - **Report** — Generate system health status in terminal, JSON, or Markdown formats
 - **Configuration** — Custom configuration overlays using local `devdoctor.json` files
 - **Extensible** — Dynamic runtime plugin loading directly from filesystem directories
-- **Interactive** — Arrow-key menu when run with no arguments in a TTY
+- **Interactive** — Arrow-key menu when run with no arguments in a TTY, with secondary prompts for key flags (verbose, dry-run, format, etc.)
 - **Shell Completions** — Tab completion scripts for bash, zsh, fish, and PowerShell
+- **Dependency-Aware Checks** — Downstream checks skip cleanly when upstream checks fail, avoiding false negatives
 
 ---
 
@@ -53,6 +57,12 @@ npx tsx src/cli/index.ts diagnose node
 # Diagnose your Git environment
 npx tsx src/cli/index.ts diagnose git
 
+# Diagnose Redis (port, ping, memory)
+npx tsx src/cli/index.ts diagnose redis
+
+# Diagnose Python (version, pip, venv, PATH)
+npx tsx src/cli/index.ts diagnose python
+
 # Diagnose with detailed educational explanations
 npx tsx src/cli/index.ts diagnose node --verbose
 
@@ -68,8 +78,14 @@ npx tsx src/cli/index.ts env
 # Run full health check across all plugins and tools
 npx tsx src/cli/index.ts doctor
 
+# View health score timeline across past runs
+npx tsx src/cli/index.ts history
+
 # Safely repair issues detected by a plugin
 npx tsx src/cli/index.ts fix mysql
+
+# Roll back the last repair on a check
+npx tsx src/cli/index.ts rollback mysql mysql-service
 
 # Generate shell tab completions
 npx tsx src/cli/index.ts completion bash >> ~/.bashrc
@@ -79,6 +95,36 @@ npx tsx src/cli/index.ts completion bash >> ~/.bashrc
 
 ## Commands
 
+### Interactive Menu (no arguments)
+
+Running `devdoctor` with no arguments in a TTY launches an arrow-key navigation menu. After selecting a command, secondary prompts surface the most useful flags — no CLI syntax required:
+
+```text
+  Use ↑ ↓ arrows to navigate, Enter to select, Esc/q to exit.
+
+  ❯  🩺  Full health check
+          doctor — runs all plugins and shows a health dashboard
+
+     🔍  Diagnose a plugin
+     🔧  Fix issues
+     ℹ️   System info
+     📋  Environment variables
+
+  Tip: Run devdoctor --help or devdoctor <command> --help for advanced flags.
+```
+
+| Command selected | Follow-up prompts |
+|---|---|
+| Diagnose | "Show verbose output?" → `--verbose` |
+| Fix | "Dry run first?" → `--dry-run`; if no, "Auto-confirm?" → `--yes` |
+| Doctor | "Output format?" → `--format terminal/json/markdown` |
+| Info | "Output format?" → `--format terminal/json` |
+| Env | "PATH only?" → `--path`; if no, "Show all?" → `--all` |
+| History | "Show all recorded runs?" → `--last 100` |
+| Rollback | Prompts for plugin → check name → "Auto-confirm?" → `--yes` |
+
+In non-TTY environments (pipes, CI), running with no arguments falls back to the standard help output unchanged.
+
 ### `devdoctor diagnose <plugin>`
 
 Run diagnostic checks for a specific technology.
@@ -86,17 +132,19 @@ Run diagnostic checks for a specific technology.
 ```text
 Options:
   -v, --verbose           Show detailed explanations for all checks, including passing ones
-  --format <json|md|html> Format of the diagnostic report (Phase 6)
-  --output <file>         Output file path to save report to (Phase 6)
+  -f, --format <format>   Output format: terminal (default), json, markdown
+  --output <file>         Write report to a file instead of stdout
 ```
 
 **Available plugins:**
 
-| Plugin  | Description                                                        |
-| :---    | :---                                                               |
-| `node`  | Node.js installation, npm availability, PATH configuration         |
-| `mysql` | MySQL/MariaDB service, TCP port, config, error log checks          |
-| `git`   | Git installation, identity config, default branch, SSH key checks  |
+| Plugin   | Description                                                                          |
+| :---     | :---                                                                                 |
+| `node`   | Node.js installation, npm availability, PATH configuration                           |
+| `mysql`  | MySQL/MariaDB service, TCP port, config, error log checks                            |
+| `git`    | Git installation, identity config, default branch, SSH key checks                    |
+| `redis`  | Redis installation, service, port 6379, PING connectivity, memory usage              |
+| `python` | Python 3 installation, pip, virtual environment, PATH ordering conflict detection    |
 
 ### `devdoctor info`
 
@@ -127,6 +175,12 @@ Security risks detected:
 
 Run a full health check across all registered plugins and scan for installed development tools to produce a unified health dashboard with an overall health score and actionable recommendations.
 
+```text
+Options:
+  -f, --format <format>   Output format: terminal (default), json, markdown
+  -o, --output <file>     Write report to a file instead of stdout
+```
+
 ### `devdoctor completion <shell>`
 
 Generate a shell tab-completion script. Supports `bash`, `zsh`, `fish`, and `pwsh`.
@@ -151,6 +205,43 @@ Options:
 When `--yes` is not provided and stdin is not a TTY (e.g. a CI pipeline), the command fails immediately with a clear message rather than hanging. Use `--yes` for non-interactive environments.
 
 Every repair, verification, and rollback action is recorded in `~/.devdoctor/history.json` (NDJSON format) for auditing.
+
+### `devdoctor rollback <plugin> <check>`
+
+Explicitly undo the last automated repair for a specific check. Only available for checks whose plugin implements rollback support (currently `mysql-service` and `xampp-process`).
+
+```text
+Options:
+  -y, --yes     Auto-confirm rollback without prompting (for scripted environments)
+```
+
+```bash
+# Roll back a MySQL service repair
+devdoctor rollback mysql mysql-service
+
+# Roll back in a script
+devdoctor rollback mysql xampp-process --yes
+```
+
+After rolling back, run `devdoctor diagnose <plugin>` to confirm the environment state.
+
+### `devdoctor history`
+
+Show a timeline of past `devdoctor doctor` runs with health scores, trend arrows, and plugin-level status.
+
+```text
+Options:
+  -n, --last <n>          Number of recent entries to show (default: 10)
+  -f, --format <format>   Output format: terminal (default), json
+```
+
+```bash
+devdoctor history          # Last 10 runs
+devdoctor history --last 30
+devdoctor history --format json | jq '.[] | .percentage'
+```
+
+Health score history is stored in `~/.devdoctor/runs.json` and updated automatically after every `devdoctor doctor` run.
 
 ---
 
@@ -241,6 +332,8 @@ src/
 │   │   ├── env.ts           #     devdoctor env
 │   │   ├── doctor.ts        #     devdoctor doctor
 │   │   ├── fix.ts           #     devdoctor fix <plugin>
+│   │   ├── rollback.ts      #     devdoctor rollback <plugin> <check>
+│   │   ├── history.ts       #     devdoctor history
 │   │   └── completion.ts    #     devdoctor completion <shell>
 │   └── ui/                  #   Terminal UI helpers
 │       ├── banner.ts        #     Welcome banner (gradient ASCII art)
@@ -251,28 +344,29 @@ src/
 │
 ├── core/                    # Domain Layer (zero dependencies)
 │   ├── types/               #   Shared domain types
-│   │   ├── diagnostic.ts    #     DiagnosticResult, CheckStatus
+│   │   ├── diagnostic.ts    #     DiagnosticResult, CheckStatus, dependsOn
 │   │   ├── plugin.ts        #     Plugin interface contract
 │   │   ├── system-info.ts   #     SystemInfo types
 │   │   ├── environment.ts   #     EnvironmentInfo, PathEntry
 │   │   ├── doctor-result.ts #     DoctorResult, HealthScore
-│   │   └── repair.ts        #     RepairResult, VerificationResult
+│   │   ├── repair.ts        #     RepairResult, VerificationResult
+│   │   └── history.ts       #     HistoryEntry (doctor run snapshots)
 │   └── engine/
 │       ├── diagnostic-engine.ts  # Orchestrates plugin diagnostics (concurrent, per-plugin timeout)
 │       ├── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
-│       └── status-utils.ts       # Shared deriveOverallStatus helper
+│       └── status-utils.ts       # deriveOverallStatus + applyDependencySkips
 │
 ├── plugins/                 # Plugin Layer
 │   ├── plugin-registry.ts   #   Plugin registration and lookup
 │   ├── node/                #   Node.js plugin
-│   ├── mysql/               #   MySQL plugin
-│   └── git/                 #   Git plugin
-│       ├── index.ts         #     Plugin entry point
-│       └── checks/          #     Individual diagnostic checks
-│           ├── installation-check.ts
-│           ├── identity-check.ts
-│           ├── branch-check.ts
-│           └── ssh-check.ts
+│   ├── mysql/               #   MySQL plugin (with repair + rollback)
+│   ├── git/                 #   Git plugin
+│   ├── redis/               #   Redis plugin
+│   │   ├── index.ts
+│   │   └── checks/          #     installation, service, port, ping, memory
+│   └── python/              #   Python plugin
+│       ├── index.ts
+│       └── checks/          #     installation, pip, venv, path
 │
 ├── infra/                   # Infrastructure Layer
     ├── os/
@@ -280,7 +374,8 @@ src/
     │   ├── process-manager.ts        #   Daemon spawn, TCP probe, process detection
     │   └── ...
     ├── audit/
-    │   └── audit-logger.ts           #   Repair audit log (~/.devdoctor/history.json)
+    │   ├── audit-logger.ts           #   Repair audit log (~/.devdoctor/history.json)
+    │   └── history-store.ts          #   Doctor run history (~/.devdoctor/runs.json)
     └── system/
         ├── system-info-collector.ts  # OS/CPU/memory info
         ├── tool-detector.ts          # Scans for 9+ dev tools
@@ -408,9 +503,19 @@ npm test
 
 # Run tests in watch mode
 npm run test:watch
+
+# Update snapshots after an intentional renderer change
+npx vitest --run -u src/cli/reporting/renderers.snapshot.test.ts
+npx vitest --run -u src/core/engine/status-utils.snapshot.test.ts
 ```
 
-Tests are co-located with the code they test (e.g., `diagnostic-engine.test.ts` alongside `diagnostic-engine.ts`).
+The test suite has three layers:
+
+- **Unit tests** — co-located with the code they test (e.g. `diagnostic-engine.test.ts` alongside `diagnostic-engine.ts`). Use mocks and fixtures.
+- **Plugin contract tests** (`src/plugins/plugin-contract.test.ts`) — a generic harness that validates every built-in plugin satisfies the `Plugin` interface. Runs against the real plugin implementations.
+- **Snapshot tests** — lock in the exact serialised output of the JSON and Markdown renderers, and the exact transformed arrays from `applyDependencySkips()`. Any accidental formatting regression shows immediately as a diff.
+
+When you intentionally change renderer output or dependency-skip logic, update the affected snapshots with the `-u` flag shown above, review the diff, and commit the updated `.snap` files alongside your change.
 
 ---
 
@@ -432,27 +537,39 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | [0010](docs/adr/0010-repair-engine-and-fix-ux.md) | RepairEngine, concurrent diagnostics, `--yes`/`--dry-run`  |
 | [0011](docs/adr/0011-audit-log.md)               | Append-only NDJSON repair audit log                         |
 | [0012](docs/adr/0012-env-security-checks.md)     | Environment security risk detection (PATH, secrets)         |
+| [0013](docs/adr/0013-plugin-contract-testing.md) | Generic plugin contract test harness                        |
+| [0014](docs/adr/0014-quiet-mode-for-ci.md)       | Quiet mode for CI pipelines                                 |
+| [0015](docs/adr/0015-rollback-command.md)         | Explicit `devdoctor rollback` command                       |
+| [0016](docs/adr/0016-diagnostic-history.md)       | Diagnostic history and health score trending                |
+| [0017](docs/adr/0017-dependency-aware-checks.md)  | Dependency-aware check ordering with `dependsOn`            |
+| [0018](docs/adr/0018-redis-python-plugins.md)     | Redis and Python plugin decisions                           |
 
 ---
 
 ## Roadmap
 
-| Phase | Focus                           | Status      |
-| :---  | :---                            | :---        |
-| 1     | CLI Foundation                  | ✅ Complete  |
-| 2     | System Information              | ✅ Complete  |
-| 3     | Diagnostics Engine              | ✅ Complete  |
-| 4     | Repair Engine                   | ✅ Complete  |
-| 5     | Plugin System (dynamic loading) | ✅ Complete  |
-| 6     | Reporting (JSON, Markdown)      | ✅ Complete  |
-| 7     | Configuration (`devdoctor.json`)| ✅ Complete  |
-| 8     | Packaging (standalone binaries) | ✅ Complete  |
-| 9     | Security Hardening              | ✅ Complete  |
-| 10    | RepairEngine + CI Fix UX        | ✅ Complete  |
-| 11    | Repair Audit Log                | ✅ Complete  |
-| 12    | Environment Security Checks     | ✅ Complete  |
-| 13    | Git Plugin                      | ✅ Complete  |
-| 14    | UX Improvements                 | ✅ Complete  |
+| Phase | Focus                                    | Status      |
+| :---  | :---                                     | :---        |
+| 1     | CLI Foundation                           | ✅ Complete  |
+| 2     | System Information                       | ✅ Complete  |
+| 3     | Diagnostics Engine                       | ✅ Complete  |
+| 4     | Repair Engine                            | ✅ Complete  |
+| 5     | Plugin System (dynamic loading)          | ✅ Complete  |
+| 6     | Reporting (JSON, Markdown)               | ✅ Complete  |
+| 7     | Configuration (`devdoctor.json`)         | ✅ Complete  |
+| 8     | Packaging (standalone binaries)          | ✅ Complete  |
+| 9     | Security Hardening                       | ✅ Complete  |
+| 10    | RepairEngine + CI Fix UX                 | ✅ Complete  |
+| 11    | Repair Audit Log                         | ✅ Complete  |
+| 12    | Environment Security Checks              | ✅ Complete  |
+| 13    | Git Plugin                               | ✅ Complete  |
+| 14    | UX Improvements                          | ✅ Complete  |
+| 15    | Interactive Menu + Flag Prompts          | ✅ Complete  |
+| 16    | Redis + Python Plugins                   | ✅ Complete  |
+| 17    | Dependency-Aware Check Ordering          | ✅ Complete  |
+| 18    | Diagnostic History + Trending            | ✅ Complete  |
+| 19    | Explicit Rollback Command                | ✅ Complete  |
+| 20    | Snapshot Tests for Renderer Output       | ✅ Complete  |
 
 ---
 
