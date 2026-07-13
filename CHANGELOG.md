@@ -12,12 +12,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **Git plugin** (`src/plugins/git/`) — Four diagnostic checks: Git installation and version, global identity (`user.name` / `user.email`), default branch name (`init.defaultBranch`), and SSH key presence in `~/.ssh`.
+- **`--quiet` / `-q` flag** — A global flag that suppresses all banners, loading spinners, and ANSI color codes to make DevDoctor entirely machine-readable and suitable for CI pipelines.
 - **Interactive menu mode** — Running `devdoctor` with no arguments in a TTY now shows an arrow-key navigation menu instead of the help screen. Esc or `q` exits; non-TTY environments (pipes, CI) fall back to help output unchanged.
 - **Shell completions** (`devdoctor completion <shell>`) — Generates ready-to-source tab-completion scripts for `bash`, `zsh`, `fish`, and `pwsh`. Plugin names and `--format` values are included as completions.
 - **`--format json` on `info` and `env`** — Both commands now accept `-f, --format json` for machine-readable stdout output, consistent with `diagnose` and `doctor`. Banner and spinner are suppressed in JSON mode.
 - **State transition diff on `fix`** — After a successful repair and verification, a before/after block is rendered showing the prior state, the resolved state, and the action taken.
 - **`src/core/engine/status-utils.ts`** — Shared `deriveOverallStatus` utility extracted from the three plugin implementations that each duplicated it.
 - **Plugin contract test suite** (`src/plugins/plugin-contract.test.ts`) — Generic contract harness that validates every registered plugin satisfies the `Plugin` interface. Runs for `node`, `mysql`, and `git`.
+- **ADR-0013** — Plugin contract testing strategy documented.
+- **ADR-0014** — Quiet mode for CI pipelines documented.
 - **CI runs on `dev` branch** — CI workflow now triggers on pushes and PRs targeting `main`, `master`, and `dev`.
 - **Release restricted to `main`** — The release workflow now only fires for `v*` tags originating from `main`, preventing accidental releases from feature branches.
 
