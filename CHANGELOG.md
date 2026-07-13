@@ -7,6 +7,29 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.2] — 2026-07-13
+
+### Changed
+
+- **Spinner transitions** — Spinners now call `.succeed()` with a completion summary instead of silently stopping, giving clear visual feedback before output appears (#9).
+- **Doctor health check completion** — The doctor spinner now reports how many issues were found (or confirms all plugins healthy) when it finishes (#11).
+- **Fix `--yes` preamble** — When `--yes` is active, a list of repairs about to be applied is printed before execution begins (#13).
+- **Fix pre-repair diagnosis label** — The diagnosis spinner in `fix` now reads "Pre-repair diagnosis" to distinguish it from a standalone `diagnose` run (#10).
+- **Fix elapsed time in summary** — The fix command summary now shows total elapsed time (#12).
+- **Fix skip message clarity** — Declined repairs now show an inline "→ Skipping." acknowledgment immediately after the user presses Enter (#7).
+- **Doctor recommendations includes warnings** — Checks with `warn` status and a suggestion now appear in the Recommendations section, not just `fail` checks (#4).
+- **Env value truncation respects terminal width** — Variable values are now truncated based on `process.stdout.columns` rather than a hardcoded 60-char limit (#5).
+- **Info memory bar has a Usage label** — The memory progress bar in `devdoctor info` now has a "Usage" prefix for context (#6).
+- **"Use --verbose" tip is conditional** — The tip only appears when at least one passing check has suppressed detail content (#2).
+- **Tree style unified in fix** — The no-repairs warning path now uses the same connector style as the repair path (#3).
+
+### Fixed
+
+- **Spinner/error competition** — Spinner now stops silently before error blocks are printed, preventing double messages (#1).
+- **Error paths have "what to do next" hints** — Unknown plugin and TTY error messages now end with a hint to run `--help` (#8).
+
+---
+
 ## [0.2.1] — 2026-07-13
 
 ### Fixed
@@ -78,6 +101,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.2.2]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/m0rPleX-16/DevDoctor/releases/tag/v0.1.0

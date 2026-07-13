@@ -9,6 +9,12 @@
  *   markdown           — GitHub-Flavoured Markdown report
  *
  * Use --output <file> to write the report to disk instead of stdout.
+ *
+ * 0.2.2:
+ * - Spinner calls .succeed() with check count instead of silently stopping (item 9)
+ * - Spinner calls .stop() (not .fail()) before error blocks to avoid visual competition (item 1)
+ * - "Use --verbose" tip is conditional on checks that have suppressed detail (item 2)
+ * - Error paths end with a "run --help" hint (item 8)
  */
 
 import { Command } from 'commander';
@@ -85,7 +91,6 @@ export function createDiagnoseCommand(
       const verbose = options.verbose ?? false;
       const format: ReportFormat = options.format ?? config?.defaultFormat ?? 'terminal';
 
-      // Non-terminal formats skip the banner for clean pipe-able output
       if (format === 'terminal') showCompactBanner();
 
       const spinner = format === 'terminal'
@@ -95,22 +100,32 @@ export function createDiagnoseCommand(
       const result = await engine.runDiagnostics(pluginName);
 
       if (!result) {
-        spinner?.fail(`Unknown plugin: "${pluginName}"`);
+        // Item 1: stop silently — let the error block below be the sole message
+        spinner?.stop();
+
         if (format !== 'terminal') {
           process.stderr.write(`Error: Unknown plugin "${pluginName}"\n`);
         } else {
+          console.log();
+          console.log(`  ${theme.error(`✖ Unknown plugin: "${pluginName}"`)}`);
           console.log();
           console.log(`  ${theme.muted('Available plugins:')}`);
           for (const name of engine.getAvailablePlugins()) {
             console.log(`    ${theme.primary('›')} ${chalk.white(`devdoctor diagnose ${name}`)}`);
           }
           console.log();
+          // Item 8: what to do next
+          console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+          console.log();
         }
         process.exitCode = 1;
         return;
       }
 
-      spinner?.stop();
+      // Item 9: succeed with check count instead of silently stopping
+      if (format === 'terminal') {
+        spinner?.succeed(`${result.checks.length} checks completed in ${result.durationMs}ms`);
+      }
 
       // ── Non-terminal formats ──
       const renderer = createRenderer(format);
@@ -118,11 +133,7 @@ export function createDiagnoseCommand(
         const content = renderer.renderDiagnostic(result);
 
         if (options.output) {
-          const filePath = writeReport(
-            content,
-            options.output,
-            config?.reportOutputDir,
-          );
+          const filePath = writeReport(content, options.output, config?.reportOutputDir);
           console.log(`  ${theme.success('✓')} Report written to ${chalk.white(filePath)}`);
         } else {
           process.stdout.write(content + '\n');
@@ -174,7 +185,11 @@ export function createDiagnoseCommand(
       console.log(`  ${summary}`);
       console.log();
 
-      if (!verbose && result.checks.some((c) => c.status === 'pass')) {
+      // Item 2: only show the --verbose tip when there's suppressed detail to reveal
+      const hasHiddenDetail = !verbose && result.checks.some(
+        (c) => c.status === 'pass' && c.detail && c.detail.trim().length > 0,
+      );
+      if (hasHiddenDetail) {
         console.log(
           `  ${theme.muted('Tip: Use')} ${chalk.white('--verbose')} ${theme.muted('to see detailed explanations for all checks.')}`,
         );
@@ -182,14 +197,9 @@ export function createDiagnoseCommand(
       }
 
       if (options.output) {
-        // Terminal + file: write a markdown copy alongside the coloured output
         const mdContent = new (await import('../reporting/markdown-renderer.js')).MarkdownRenderer()
           .renderDiagnostic(result);
-        const filePath = writeReport(
-          mdContent,
-          options.output,
-          config?.reportOutputDir,
-        );
+        const filePath = writeReport(mdContent, options.output, config?.reportOutputDir);
         console.log(`  ${theme.muted('Report saved to')} ${chalk.white(filePath)}`);
         console.log();
       }

@@ -4,6 +4,11 @@
  * The `devdoctor doctor` command — full health dashboard.
  *
  * Supports --format (terminal|json|markdown) and --output <file>.
+ *
+ * 0.2.2:
+ * - Spinner calls .succeed() summarising findings instead of .stop() (item 11)
+ * - Recommendations section includes warn checks with suggestions, not just fail (item 4)
+ * - Recommendations section label shows count (item 4)
  */
 
 import { Command } from 'commander';
@@ -97,9 +102,18 @@ export function createDoctorCommand(
 
       const durationMs = Math.round(performance.now() - startTime);
       const health = calculateHealthScore(diagnostics);
-      spinner?.stop();
 
-      // Build the structured DoctorResult (used by non-terminal renderers)
+      // Item 11: succeed with a meaningful summary instead of silently stopping
+      const issueCount = diagnostics
+        .flatMap((d) => d.checks)
+        .filter((c) => c.status === 'fail' || c.status === 'warn').length;
+
+      spinner?.succeed(
+        issueCount > 0
+          ? `Health check complete — ${issueCount} issue(s) found across ${diagnostics.length} plugin(s)`
+          : `Health check complete — all ${diagnostics.length} plugin(s) healthy`,
+      );
+
       const doctorResult: DoctorResult = {
         diagnostics,
         tools,
@@ -129,7 +143,7 @@ export function createDoctorCommand(
       console.log();
       console.log(sectionHeader('Health Score', icon));
       console.log(connector());
-      console.log(`  ${theme.muted('│')}  ${progressBar(health.percentage)}`);
+      console.log(`  ${theme.muted('│')}  ${progressBar(health.percentage, 30, { invert: true })}`);
       console.log(`  ${theme.muted('│')}  ${colorFn(label)} ${theme.muted('·')} ${theme.muted(`${health.totalChecks} checks in ${durationMs}ms`)}`);
       console.log(connector());
       console.log(
@@ -198,16 +212,18 @@ export function createDoctorCommand(
         console.log(connector());
       }
 
-      const issues = diagnostics
+      // Item 4: include warn checks with suggestions, not just fail; show count in label
+      const recommendations = diagnostics
         .flatMap((r) => r.checks)
-        .filter((c) => c.status === 'fail' && c.suggestion);
+        .filter((c) => (c.status === 'fail' || c.status === 'warn') && c.suggestion);
 
-      if (issues.length > 0) {
+      if (recommendations.length > 0) {
         console.log();
-        console.log(sectionHeader('Recommendations', '💡'));
+        console.log(sectionHeader(`Recommendations (${recommendations.length})`, '💡'));
         console.log(connector());
-        issues.forEach((c, i) => {
-          console.log(`  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${chalk.hex('#A78BFA')(c.suggestion!)}`);
+        recommendations.forEach((c, i) => {
+          const badge = statusBadge(c.status);
+          console.log(`  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${chalk.hex('#A78BFA')(c.suggestion!)}`);
         });
       }
 

@@ -67,7 +67,7 @@ export function createInfoCommand(): Command {
       console.log(field('Used', formatBytes(info.memory.usedBytes)));
       console.log(field('Free', formatBytes(info.memory.freeBytes)));
       console.log(connector());
-      console.log(`  ${theme.muted('│')}  ${progressBar(info.memory.usagePercent)}`);
+      console.log(`  ${theme.muted('│')}  ${theme.muted('Usage'.padEnd(14))} ${progressBar(info.memory.usagePercent)}`);
 
       // Runtime section
       console.log();

@@ -42,8 +42,10 @@ const CATEGORY_ICONS: Record<EnvCategory, string> = {
  */
 function renderVariable(v: EnvVariable, showDescription: boolean): void {
   const nameStyle = v.value !== undefined ? chalk.white.bold : theme.muted;
+  const termWidth = process.stdout.columns ?? 80;
+  const maxValueLen = Math.min(120, Math.max(40, termWidth - 12));
   const valueText = v.value
-    ? theme.text(v.value.length > 60 ? v.value.slice(0, 57) + '...' : v.value)
+    ? theme.text(v.value.length > maxValueLen ? v.value.slice(0, maxValueLen - 3) + '...' : v.value)
     : theme.error('not set');
 
   const badge = v.value !== undefined ? statusBadge('pass') : statusBadge('skip');

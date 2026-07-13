@@ -180,29 +180,35 @@ export function tag(
 /**
  * Render a progress/usage bar.
  *
- * Example:
- *   [████████████████████░░░░░░░░░░] 67%
+ * @param percent      - Value 0–100
+ * @param width        - Bar character width (default 30)
+ * @param options.showPercent - Whether to append the percentage (default true)
+ * @param options.invert      - Invert the color scale: high % = green (for health scores),
+ *                              low % = green (default, for resource usage like memory)
+ *
+ * Examples:
+ *   [████████████████████░░░░░░░░░░] 67%          (default: usage bar)
+ *   [████████████████████░░░░░░░░░░] 67%          (invert: health bar)
  */
 export function progressBar(
   percent: number,
   width: number = 30,
-  options?: { showPercent?: boolean },
+  options?: { showPercent?: boolean; invert?: boolean },
 ): string {
   const filled = Math.round((percent / 100) * width);
   const empty = width - filled;
 
-  const colorFn =
-    percent > 90
-      ? theme.error
-      : percent > 70
-        ? theme.warning
-        : theme.success;
+  let colorFn: typeof theme.success;
+  if (options?.invert) {
+    // Health score: high % is good
+    colorFn = percent >= 80 ? theme.success : percent >= 50 ? theme.warning : theme.error;
+  } else {
+    // Resource usage: high % is bad
+    colorFn = percent > 90 ? theme.error : percent > 70 ? theme.warning : theme.success;
+  }
 
-  const bar =
-    colorFn('█'.repeat(filled)) + theme.muted('░'.repeat(empty));
-
-  const percentStr =
-    options?.showPercent !== false ? ` ${theme.text(`${percent}%`)}` : '';
+  const bar = colorFn('█'.repeat(filled)) + theme.muted('░'.repeat(empty));
+  const percentStr = options?.showPercent !== false ? ` ${theme.text(`${percent}%`)}` : '';
 
   return `${theme.muted('[')}${bar}${theme.muted(']')}${percentStr}`;
 }

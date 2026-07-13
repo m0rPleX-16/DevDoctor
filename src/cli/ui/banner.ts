@@ -6,37 +6,36 @@
  *
  * Visual techniques used:
  *
- * 1. Drop shadow — a dark copy of the ASCII art is rendered shifted
- *    one row down and two columns right, then the gradient art is
- *    printed over it using ANSI cursor-up escapes. This creates a
- *    depth illusion without any external library.
+ * 1. Three-stop gradient — the ASCII art interpolates through
+ *    cyan → indigo → purple for visual richness.
  *
- * 2. Three-stop gradient — the ASCII art interpolates through
- *    cyan → indigo → purple for more visual richness than a simple
- *    two-color fade.
+ * 2. Rounded box frame — the banner is enclosed in a ╭─╯ box whose
+ *    border color is tinted to match the gradient midpoint.
  *
- * 3. Rounded box frame — the banner is enclosed in a ╭─╯ box whose
- *    border color is tinted to match the gradient midpoint, giving
- *    the whole block a glowing-card appearance.
+ * 3. Pill badge — version and status rendered as compact chips.
  *
- * 4. Pill badge — version and status are rendered as compact
- *    background-colored chips inside the box footer, matching the
- *    style used in popular CLIs like Vite and Astro.
+ * ASCII art font: ANSI Shadow (figlet) — "DevDoctor"
  */
 
 import chalk from 'chalk';
+import { createRequire } from 'node:module';
 import { theme } from './formatter.js';
 
+// Read version from package.json — single source of truth
+const require = createRequire(import.meta.url);
+const { version: PKG_VERSION } = require('../../../package.json') as { version: string };
+
 // ── ASCII Art ─────────────────────────────────────────────────────
-// "Standard" figlet font, manually aligned.
-// Each line is exactly the same width for clean shadow alignment.
+// Font: ANSI Shadow (figlet) — "DevDoctor"
+// All lines padded to equal width for clean box alignment.
 
 const ART_LINES = [
-  '  ____             ____             _              ',
-  ' |  _ \\  _____   _|  _ \\  ___   ___| |_ ___  _ __ ',
-  ' | | | |/ _ \\ \\ / / | | |/ _ \\ / __| __/ _ \\| \'__|',
-  ' | |_| |  __/\\ V /| |_| | (_) | (__| || (_) | |   ',
-  ' |____/ \\___| \\_/ |____/ \\___/ \\___|\\__\\___/|_|   ',
+  ' ██████╗ ███████╗██╗   ██╗██████╗  ██████╗  ██████╗████████╗ ██████╗ ██████╗ ',
+  ' ██╔══██╗██╔════╝██║   ██║██╔══██╗██╔═══██╗██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗',
+  ' ██║  ██║█████╗  ██║   ██║██║  ██║██║   ██║██║        ██║   ██║   ██║██████╔╝',
+  ' ██║  ██║██╔══╝  ╚██╗ ██╔╝██║  ██║██║   ██║██║        ██║   ██║   ██║██╔══██╗',
+  ' ██████╔╝███████╗ ╚████╔╝ ██████╔╝╚██████╔╝╚██████╗   ██║   ╚██████╔╝██║  ██║',
+  ' ╚═════╝ ╚══════╝  ╚═══╝  ╚═════╝  ╚═════╝  ╚═════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝',
 ];
 
 const ART_WIDTH = Math.max(...ART_LINES.map((l) => l.length));
@@ -47,9 +46,6 @@ const STOP_A: [number, number, number] = [54, 188, 247];   // #36BCF7 cyan
 const STOP_B: [number, number, number] = [99, 102, 241];   // #6366F1 indigo
 const STOP_C: [number, number, number] = [124, 58, 237];   // #7C3AED purple
 
-// Shadow color: very dark, slightly purple-tinted
-const SHADOW_COLOR = '#1A1025';
-
 // Box border color: indigo midpoint for a "glow" look
 const BORDER_COLOR = '#5B5BCA';
 
@@ -57,7 +53,7 @@ const BORDER_COLOR = '#5B5BCA';
 
 /**
  * Three-stop horizontal gradient over a string.
- * First half of characters blend A→B, second half blend B→C.
+ * First half blends A→B, second half blends B→C.
  */
 function triGradient(text: string): string {
   const chars = [...text];
@@ -83,41 +79,21 @@ function triGradient(text: string): string {
     .join('');
 }
 
-/**
- * Render text in the shadow color (dark, no gradient).
- * The shadow is shifted right by 2 columns via padding.
- */
-function shadowLine(text: string): string {
-  return chalk.hex(SHADOW_COLOR)('  ' + text);
-}
-
-/**
- * Move the terminal cursor up by N lines.
- * Used to overlay the gradient art over the already-printed shadow.
- */
-function cursorUp(n: number): string {
-  return `\x1b[${n}A`;
-}
-
 /** Render a rounded box top: ╭───────╮ */
 function boxTop(innerWidth: number): string {
-  return chalk.hex(BORDER_COLOR)(
-    '  ╭' + '─'.repeat(innerWidth) + '╮',
-  );
+  return chalk.hex(BORDER_COLOR)('╭' + '─'.repeat(innerWidth) + '╮');
 }
 
 /** Render a rounded box bottom: ╰───────╯ */
 function boxBottom(innerWidth: number): string {
-  return chalk.hex(BORDER_COLOR)(
-    '  ╰' + '─'.repeat(innerWidth) + '╯',
-  );
+  return chalk.hex(BORDER_COLOR)('╰' + '─'.repeat(innerWidth) + '╯');
 }
 
 /** Render a box side row: │ <content padded to innerWidth> │ */
 function boxRow(content: string, innerWidth: number, rawLength: number): string {
   const padding = Math.max(innerWidth - rawLength, 0);
   return (
-    chalk.hex(BORDER_COLOR)('  │') +
+    chalk.hex(BORDER_COLOR)('│') +
     content +
     ' '.repeat(padding) +
     chalk.hex(BORDER_COLOR)('│')
@@ -132,50 +108,43 @@ function pill(label: string, bg: string, fg = '#0D0D14'): string {
 // ── Public API ────────────────────────────────────────────────────
 
 /**
- * Display the full Dev Doctor welcome banner with drop shadow,
- * gradient ASCII art, rounded box frame, and version badges.
+ * Display the full Dev Doctor welcome banner with gradient ANSI Shadow
+ * ASCII art, rounded box frame, and version badges.
  */
 export function showBanner(): void {
-  const version = '0.1.0';
-  // Inner width = art width + 1 leading space on each side
+  const version = PKG_VERSION;
+  // Inner width = art width + 1 space of padding on each side
   const innerWidth = ART_WIDTH + 2;
 
   console.log();
-
-  // ── Box top ──
   console.log(boxTop(innerWidth));
-
-  // ── Empty row ──
   console.log(boxRow('', innerWidth, 0));
 
-  // Print gradient art
   for (const line of ART_LINES) {
     const gradientContent = ' ' + triGradient(line);
     const rawLen = 1 + line.length;
     console.log(boxRow(gradientContent, innerWidth, rawLen));
   }
 
-  // ── Empty separator row ──
   console.log(boxRow('', innerWidth, 0));
 
-  // ── Divider inside box ──
-  const divider = chalk.hex(BORDER_COLOR)('  ├' + '─'.repeat(innerWidth) + '┤');
-  console.log(divider);
+  // Divider inside box
+  console.log(chalk.hex(BORDER_COLOR)('├' + '─'.repeat(innerWidth) + '┤'));
 
-  // ── Footer row: tagline + badges ──
+  // Footer: tagline + version + platform badges
   const taglineText = 'Diagnose · Explain · Repair';
   const versionText = `v${version}`;
   const tagline = `  ${theme.muted(taglineText)}`;
   const versionBadge = pill(versionText, '#6366F1', '#E0E7FF');
   const platformBadge = pill('CLI', '#0F766E', '#CCFBF1');
   const footerContent = tagline + '   ' + versionBadge + ' ' + platformBadge;
-  // Visible character count: 2 leading spaces + tagline + 3 spaces + space+text+space for each pill + 1 space between pills
-  const footerRawLen = 2 + taglineText.length + 3 + (1 + versionText.length + 1) + 1 + (1 + 'CLI'.length + 1);
+  const footerRawLen =
+    2 + taglineText.length + 3 +
+    (1 + versionText.length + 1) + 1 +
+    (1 + 'CLI'.length + 1);
   console.log(boxRow(footerContent, innerWidth, footerRawLen));
 
-  // ── Box bottom ──
   console.log(boxBottom(innerWidth));
-
   console.log();
   console.log(
     `  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('for available commands.')}`,
@@ -185,15 +154,14 @@ export function showBanner(): void {
 
 /**
  * Compact banner shown before command output.
- * A single styled line with a subtle separator underneath.
  *
  * Example:
  *   ╷
- *   │  ✦ Dev Doctor  v0.1.0  ·  Diagnose · Explain · Repair
+ *   │  ✦ Dev Doctor  v0.2.1  ·  Diagnose · Explain · Repair
  *   ╵
  */
 export function showCompactBanner(): void {
-  const version = '0.1.0';
+  const version = PKG_VERSION;
   const border = chalk.hex(BORDER_COLOR);
 
   console.log();

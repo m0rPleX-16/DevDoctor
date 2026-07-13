@@ -146,6 +146,8 @@ export function createFixCommand(
           console.log(`    ${theme.primary('›')} ${chalk.white(`devdoctor fix ${name}`)}`);
         }
         console.log();
+        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+        console.log();
         process.exitCode = 1;
         return;
       }
@@ -159,6 +161,8 @@ export function createFixCommand(
         console.log(`  ${theme.muted('Use')} ${chalk.white('--dry-run')} ${theme.muted('to preview what would be repaired:')}`);
         console.log(`    ${chalk.cyan(`devdoctor fix ${pluginName} --dry-run`)}`);
         console.log();
+        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+        console.log();
         process.exitCode = 1;
         return;
       }
@@ -171,6 +175,8 @@ export function createFixCommand(
         } catch (err) {
           console.log();
           console.log(`  ${theme.error(`✖ ${err instanceof Error ? err.message : String(err)}`)}`);
+          console.log();
+          console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
           console.log();
           process.exitCode = 1;
           return;
@@ -196,9 +202,10 @@ async function runFix(
   engine: DiagnosticEngine,
   repairEngine: RepairEngine,
 ): Promise<void> {
-  const diagSpinner = createSpinner(`Diagnosing ${displayName}...`);
+  const startTime = performance.now();
+  const diagSpinner = createSpinner(`Pre-repair diagnosis: ${displayName}...`);
   const result = await engine.runDiagnostics(pluginName);
-  diagSpinner.stop();
+  diagSpinner.succeed(`Diagnosis complete — ${result?.checks.length ?? 0} checks in ${result?.durationMs ?? 0}ms`);
 
   if (!result) {
     console.log(`  ${theme.error('✖ Failed to obtain diagnostic results.')}`);
@@ -244,12 +251,12 @@ async function runFix(
     console.log(`  ${statusBadge('warn')}  ${theme.warning(`Found ${issues.length} issue(s), but none have automated repairs.`)}`);
     console.log();
     for (const check of issues) {
-      console.log(`  ${theme.muted('├─')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
-      console.log(`  ${theme.muted('│')}     ${theme.muted(check.message)}`);
+      console.log(`  ${theme.primary('┃')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
+      console.log(`  ${theme.primary('│')}     ${theme.muted(check.message)}`);
       if (check.suggestion) {
-        console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
+        console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
       }
-      console.log(`  ${theme.muted('│')}`);
+      console.log(`  ${theme.primary('│')}`);
     }
     console.log(`  ${hr(undefined, 48)}`);
     console.log();
@@ -272,6 +279,14 @@ async function runFix(
   let successCount = 0;
   let failCount = 0;
   let skipCount = 0;
+
+  if (autoConfirm && !dryRun && repairableIssues.length > 0) {
+    console.log(`  ${theme.warning(`⚡ Auto-confirm active. Applying ${repairableIssues.length} repair(s):`)}`);
+    for (const check of repairableIssues) {
+      console.log(`  ${theme.muted('  ›')} ${chalk.white(check.label)}`);
+    }
+    console.log();
+  }
 
   for (const check of repairableIssues) {
     console.log(`  ${theme.primary('┃')}  ${statusColor(check.label, check.status)}`);
@@ -296,8 +311,8 @@ async function runFix(
         `  ${theme.primary('👉')}  Do you want to attempt this repair? (y/N): `,
       );
       if (!confirmed) {
-        console.log(`  ${theme.primary('│')}`);
-        console.log(`  ${theme.muted('└─ ○  Skipped repair.')}`);
+        console.log(`  ${theme.primary('│')}  ${theme.muted('→ Skipping.')}`);
+        console.log(`  ${theme.muted('└─ ○  Skipped.')}`);
         console.log();
         skipCount++;
         continue;
@@ -363,8 +378,10 @@ async function runFix(
   console.log(`  ${hr(undefined, 48)}`);
   console.log();
 
+  const elapsedMs = Math.round(performance.now() - startTime);
+
   if (dryRun) {
-    console.log(`  ${theme.primary(`ℹ Dry run complete. ${repairableIssues.length} repair(s) would be attempted.`)}`);
+    console.log(`  ${theme.primary(`ℹ Dry run complete. ${repairableIssues.length} repair(s) would be attempted. (${elapsedMs}ms)`)}`);
     console.log(`  ${theme.muted('Run without --dry-run to apply them.')}`);
   } else {
     const summaryParts = [
@@ -374,7 +391,7 @@ async function runFix(
     ].filter(Boolean);
 
     if (summaryParts.length > 0) {
-      console.log(`  ${summaryParts.join(theme.muted(' · '))}`);
+      console.log(`  ${summaryParts.join(theme.muted(' · '))} ${theme.muted('·')} ${theme.muted(`${elapsedMs}ms`)}`);
     } else {
       console.log(`  ${theme.muted('No repairs were attempted.')}`);
     }
