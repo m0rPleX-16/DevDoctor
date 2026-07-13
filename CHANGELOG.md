@@ -7,6 +7,62 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.1] — 2026-07-13
+
+### Added
+
+- **Snapshot tests for renderer output** (`src/cli/reporting/renderers.snapshot.test.ts`) — 10 snapshot cases covering `JsonRenderer` and `MarkdownRenderer` across five fixture variants each: all-passing, mixed pass/warn/fail, `dependsOn`-skipped checks, unhealthy doctor result, and fully healthy doctor result. Any accidental change to heading text, table columns, field ordering, or whitespace is now immediately visible as a diff in CI. (suggestion #19)
+- **Snapshot tests for `applyDependencySkips`** (`src/core/engine/status-utils.snapshot.test.ts`) — 9 snapshot cases covering the dependency skip utility: no deps, all deps pass, root fails (full cascade), middle dep fails (partial cascade), warn dep treated as not-pass, unknown dep reference, field preservation on skipped checks, empty array, and single check. Pins the exact transformed check arrays so regression is caught precisely.
+
+### Changed
+
+- Test suite grows from 103 to 122 tests across 17 test files. 19 snapshots written on first run.
+
+---
+
+## [0.4.0] — 2026-07-13
+
+### Added
+
+- **Redis plugin** (`src/plugins/redis/`) — Five diagnostic checks with full dependency-aware ordering: binary installation, system service status, port 6379 ownership, PING/PONG connectivity, and memory usage vs `maxmemory` limit. All checks use `applyDependencySkips()` so downstream checks skip cleanly when Redis is not installed. (ADR-0018)
+- **Python plugin** (`src/plugins/python/`) — Four diagnostic checks: Python 3 installation (`python3`/`python` with Python 2 detection), pip availability (tries `pip3`, `pip`, `python -m pip`), active virtual environment (`VIRTUAL_ENV` / Conda), and PATH ordering conflict detection for pyenv/Conda/user-install vs system Python. (ADR-0018)
+- **`devdoctor history`** — New command that reads `~/.devdoctor/runs.json` and renders a health score timeline with trend arrows (↑↓→), per-run progress bars, and plugin-level status badges on degraded rows. Supports `--last <n>` and `--format json`. (ADR-0016)
+- **`devdoctor rollback <plugin> <check>`** — New command to manually trigger a rollback of the last automated repair. Routes through `RepairEngine.runRollback()` for audit logging, requires interactive confirmation or `--yes`, guards against non-TTY environments, and suggests a follow-up `diagnose` run. (ADR-0015)
+- **Dependency-aware check ordering** — `DiagnosticCheck` now has an optional `dependsOn?: string[]` field. The new `applyDependencySkips()` utility in `status-utils.ts` substitutes a `skip` result for any check whose named dependencies did not pass, eliminating confusing false negatives. Used by Redis and Python plugins. (ADR-0017)
+- **Diagnostic history store** — `FileHistoryStore` (`src/infra/audit/history-store.ts`) appends a lightweight `HistoryEntry` snapshot to `~/.devdoctor/runs.json` after every `devdoctor doctor` run. Injected into the `doctor` command at the Composition Root. (ADR-0016)
+- **Interactive menu — history and rollback entries** — The arrow-key menu now includes "Health history" (📈) and "Roll back a repair" (↩️) entries. Rollback prompts for plugin → check name → auto-confirm before dispatching.
+- **Plugin contract test timeout override** — `testPluginContract()` now accepts an optional `timeout` parameter. The Python plugin contract test uses 15 s to accommodate multi-subprocess PATH discovery on Windows.
+- **ADR-0015** — Explicit rollback command design documented.
+- **ADR-0016** — Diagnostic history and health score trending documented.
+- **ADR-0017** — Dependency-aware check ordering documented.
+- **ADR-0018** — Redis and Python plugin decisions documented.
+
+### Changed
+
+- **`devdoctor doctor`** — Accepts an optional `IHistoryStore` parameter (injected at Composition Root). Appends a `HistoryEntry` after every run when a store is provided.
+- **`status-utils.ts`** — Exports `applyDependencySkips()` alongside the existing `deriveOverallStatus()`.
+- **`plugin-contract.test.ts`** — Updated to cover Redis and Python plugins (20 tests, up from 12).
+- **`plugin-loader.ts`** — `RedisPlugin` and `PythonPlugin` added to `BUILTIN_PLUGINS`.
+- **`path-check.ts` (Python)** — `where`/`which` command limited to 3 s timeout to prevent slow PATH searches from blocking the diagnostic run on Windows.
+- **`pip-check.ts` (Python)** — `python -m pip` fallback limited to 5 s timeout.
+- **Interactive menu** — Tip footer and `lineCount` accounting already present from 0.3.1 — no further changes needed.
+
+---
+
+## [0.3.1] — 2026-07-13
+
+### Added
+
+- **Interactive secondary prompts** — After selecting a command in the arrow-key menu, a short follow-up prompt surfaces the most useful flags without requiring knowledge of CLI syntax:
+  - `diagnose` → "Show verbose output for all checks?" (maps to `--verbose`)
+  - `fix` → "Preview repairs without making changes?" (`--dry-run`), then if not dry-run, "Auto-confirm all repairs without prompting?" (`--yes`)
+  - `doctor` → "Output format?" — choose terminal / json / markdown (`--format`)
+  - `info` → "Output format?" — choose terminal / json (`--format`)
+  - `env` → "Show only the PATH breakdown?" (`--path`), then "Show ALL environment variables?" (`--all`)
+- **Interactive menu tip footer** — A muted hint line at the bottom of the main menu reads `Tip: Run devdoctor --help or devdoctor <command> --help for advanced flags.`, guiding power users toward the full CLI surface.
+
+---
+
 ## [0.3.0] — 2026-07-13
 
 ### Added
@@ -130,6 +186,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.0...v0.2.1

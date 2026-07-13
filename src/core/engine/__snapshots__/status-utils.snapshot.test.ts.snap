@@ -1,0 +1,288 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`applyDependencySkips snapshots > all deps pass — no skips applied 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for install",
+    "label": "install label",
+    "message": "install passed",
+    "name": "install",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "detail": "detail for service",
+    "label": "service label",
+    "message": "service passed",
+    "name": "service",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "detail": "detail for port",
+    "label": "port label",
+    "message": "port passed",
+    "name": "port",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+      "port",
+    ],
+    "detail": "detail for ping",
+    "label": "ping label",
+    "message": "ping passed",
+    "name": "ping",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > empty array — returns empty array 1`] = `[]`;
+
+exports[`applyDependencySkips snapshots > middle dep fails — only downstream checks skip 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for install",
+    "label": "install label",
+    "message": "install passed",
+    "name": "install",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "detail": "detail for port",
+    "label": "port label",
+    "message": "port failed",
+    "name": "port",
+    "status": "fail",
+    "suggestion": "fix port",
+  },
+  {
+    "dependsOn": [
+      "install",
+      "port",
+    ],
+    "detail": "detail for ping",
+    "label": "ping label",
+    "message": "Skipped — depends on "port" which did not pass.",
+    "name": "ping",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "ping",
+    ],
+    "detail": "detail for memory",
+    "label": "memory label",
+    "message": "Skipped — depends on "ping" which did not pass.",
+    "name": "memory",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > no deps — returns checks unchanged 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for a",
+    "label": "a label",
+    "message": "a passed",
+    "name": "a",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": undefined,
+    "detail": "detail for b",
+    "label": "b label",
+    "message": "b passed",
+    "name": "b",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": undefined,
+    "detail": "detail for c",
+    "label": "c label",
+    "message": "c failed",
+    "name": "c",
+    "status": "fail",
+    "suggestion": "fix c",
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > preserves original fields on skipped checks (detail, suggestion retained) 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for install",
+    "label": "install label",
+    "message": "install failed",
+    "name": "install",
+    "status": "fail",
+    "suggestion": "fix install",
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "detail": "original detail",
+    "label": "Port Check",
+    "message": "Skipped — depends on "install" which did not pass.",
+    "name": "port",
+    "status": "skip",
+    "suggestion": "original suggestion",
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > root fails — all dependents become skip 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for install",
+    "label": "install label",
+    "message": "install failed",
+    "name": "install",
+    "status": "fail",
+    "suggestion": "fix install",
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "detail": undefined,
+    "label": "service label",
+    "message": "Skipped — depends on "install" which did not pass.",
+    "name": "service",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "detail": "detail for port",
+    "label": "port label",
+    "message": "Skipped — depends on "install" which did not pass.",
+    "name": "port",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+      "port",
+    ],
+    "detail": "detail for ping",
+    "label": "ping label",
+    "message": "Skipped — depends on "install" which did not pass.",
+    "name": "ping",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "ping",
+    ],
+    "detail": "detail for memory",
+    "label": "memory label",
+    "message": "Skipped — depends on "ping" which did not pass.",
+    "name": "memory",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > single check no deps — returns as-is 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for only",
+    "label": "only label",
+    "message": "only failed",
+    "name": "only",
+    "status": "fail",
+    "suggestion": "fix only",
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > unknown dep reference — check skips (dep not found = not pass) 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for a",
+    "label": "a label",
+    "message": "a passed",
+    "name": "a",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "does-not-exist",
+    ],
+    "detail": "detail for b",
+    "label": "b label",
+    "message": "Skipped — depends on "does-not-exist" which did not pass.",
+    "name": "b",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+]
+`;
+
+exports[`applyDependencySkips snapshots > warn dep — treated as not-pass, dependents skip 1`] = `
+[
+  {
+    "dependsOn": undefined,
+    "detail": "detail for install",
+    "label": "install label",
+    "message": "install passed",
+    "name": "install",
+    "status": "pass",
+    "suggestion": undefined,
+  },
+  {
+    "dependsOn": [
+      "install",
+    ],
+    "label": "service label",
+    "message": "service warned",
+    "name": "service",
+    "status": "warn",
+  },
+  {
+    "dependsOn": [
+      "service",
+    ],
+    "detail": "detail for port",
+    "label": "port label",
+    "message": "Skipped — depends on "service" which did not pass.",
+    "name": "port",
+    "status": "skip",
+    "suggestion": undefined,
+  },
+]
+`;
