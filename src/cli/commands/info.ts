@@ -4,8 +4,7 @@
  * The `devdoctor info` command.
  *
  * Displays comprehensive system information in a styled, readable format.
- * Uses section headers with accent bars and consistent field alignment
- * for a polished, professional look.
+ * Supports --format terminal (default) and --format json for machine-readable output.
  */
 
 import { Command } from 'commander';
@@ -13,7 +12,6 @@ import chalk from 'chalk';
 import { collectSystemInfo, formatBytes, formatUptime } from '../../infra/system/system-info-collector.js';
 import { createSpinner } from '../ui/spinner.js';
 import { showCompactBanner } from '../ui/banner.js';
-import type { DetectedTool } from '../../core/types/doctor-result.js';
 import {
   theme,
   hr,
@@ -24,6 +22,10 @@ import {
   statusBadge,
 } from '../ui/formatter.js';
 
+interface InfoOptions {
+  format?: 'terminal' | 'json';
+}
+
 /**
  * Create the `info` command.
  *
@@ -32,7 +34,17 @@ import {
 export function createInfoCommand(): Command {
   return new Command('info')
     .description('Display system and environment information.')
-    .action(async () => {
+    .option('-f, --format <format>', 'Output format: terminal (default), json', 'terminal')
+    .action(async (options: InfoOptions) => {
+      const format = options.format ?? 'terminal';
+
+      if (format === 'json') {
+        // No banner or spinner for machine-readable output
+        const info = await collectSystemInfo();
+        process.stdout.write(JSON.stringify(info, null, 2) + '\n');
+        return;
+      }
+
       showCompactBanner();
 
       const spinner = createSpinner('Collecting system information...');

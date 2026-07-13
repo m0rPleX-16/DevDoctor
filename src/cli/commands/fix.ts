@@ -347,6 +347,16 @@ async function runFix(
 
     if (verifyResult.success) {
       console.log(`  ${theme.primary('│')}  ${statusBadge('pass')}  ${theme.success('Verification passed. Issue resolved!')}`);
+      // ── State transition diff ──────────────────────────────────
+      console.log(`  ${theme.primary('│')}`);
+      console.log(`  ${theme.primary('│')}  ${theme.muted('State transition:')}`);
+      console.log(`  ${theme.primary('│')}    ${theme.muted('Before')}  ${statusBadge(check.status)}  ${theme.error(check.message)}`);
+      console.log(`  ${theme.primary('│')}    ${theme.muted('After ')}  ${statusBadge('pass')}  ${theme.success(verifyResult.message)}`);
+      if (repairResult.detail) {
+        console.log(`  ${theme.primary('│')}    ${theme.muted('Action ')}  ${theme.muted(repairResult.detail)}`);
+      }
+      console.log(`  ${theme.primary('│')}`);
+      // ──────────────────────────────────────────────────────────
       console.log(`  ${theme.primary('└─ ✓  Resolved.')}`);
       successCount++;
     } else {

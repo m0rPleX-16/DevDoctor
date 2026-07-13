@@ -23,7 +23,7 @@ import type { DiagnosticEngine } from '../../core/engine/diagnostic-engine.js';
 import type { DiagnosticCheck } from '../../core/types/diagnostic.js';
 import type { ReportFormat } from '../../core/types/config.js';
 import type { ResolvedConfig } from '../../core/types/config.js';
-import { createRenderer, writeReport, defaultOutputFilename } from '../reporting/renderer-factory.js';
+import { createRenderer, writeReport } from '../reporting/renderer-factory.js';
 import { createSpinner } from '../ui/spinner.js';
 import { showCompactBanner } from '../ui/banner.js';
 import {
@@ -32,7 +32,6 @@ import {
   statusBadge,
   statusColor,
   statusLine,
-  connector,
 } from '../ui/formatter.js';
 
 // ── Terminal rendering ────────────────────────────────────────────

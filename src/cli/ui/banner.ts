@@ -112,6 +112,8 @@ function pill(label: string, bg: string, fg = '#0D0D14'): string {
  * ASCII art, rounded box frame, and version badges.
  */
 export function showBanner(): void {
+  if (process.env.DEVDOCTOR_QUIET === '1') return;
+
   const version = PKG_VERSION;
   // Inner width = art width + 1 space of padding on each side
   const innerWidth = ART_WIDTH + 2;
@@ -161,6 +163,8 @@ export function showBanner(): void {
  *   ╵
  */
 export function showCompactBanner(): void {
+  if (process.env.DEVDOCTOR_QUIET === '1') return;
+
   const version = PKG_VERSION;
   const border = chalk.hex(BORDER_COLOR);
 
