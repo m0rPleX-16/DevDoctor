@@ -605,3 +605,23 @@ export async function runInteractiveMenu(
     process.stdin.on('data', onKey);
   });
 }
+
+/**
+ * Prompt the user to press any key to return to the main menu.
+ */
+export async function waitReturnToMenu(): Promise<void> {
+  return new Promise((resolve) => {
+    process.stdout.write(`\n  ${theme.muted('Press any key to return to the main menu...')}\n`);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+
+    const onKey = () => {
+      process.stdin.removeListener('data', onKey);
+      process.stdin.setRawMode(false);
+      resolve();
+    };
+
+    process.stdin.on('data', onKey);
+  });
+}
+

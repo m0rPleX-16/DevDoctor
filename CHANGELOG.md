@@ -19,6 +19,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`RedisPlugin.canRepair()`** — Same explicit `return false` stub added for the same reason.
 - **Config sub-command in interactive menu** — "⚙️ Configuration" entry added to the arrow-key menu. Selecting it prompts: init / show / path, then dispatches the chosen sub-command.
 - **Guided check picker in rollback flow** — `askRollbackOptions()` in `interactive.ts` now shows a numbered list of the known rollback-supported checks for the selected plugin (`mysql-service`, `xampp-process`, `node-permissions`, `python-venv`) instead of a free-form text input. Unknown plugins still fall back to free-form entry with a warning.
+- **Looping interactive menu** — Running `devdoctor` without arguments in a TTY now runs the interactive menu in a loop. When a selected command finishes, it prompts the user to press any key to return to the main menu instead of exiting. The Commander program is rebuilt dynamically on each loop to prevent option state leakage, and Commander's exits are cleanly caught.
+- **`waitReturnToMenu()` helper** — Helper function added in `interactive.ts` to configure raw stdin mode and wait for any keypress before resolving.
 
 ### Fixed
 

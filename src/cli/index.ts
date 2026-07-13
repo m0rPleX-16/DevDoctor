@@ -34,7 +34,7 @@ import { createHistoryCommand } from './commands/history.js';
 import { createRollbackCommand } from './commands/rollback.js';
 import { createConfigCommand } from './commands/config.js';
 import { FileHistoryStore } from '../infra/audit/history-store.js';
-import { runInteractiveMenu } from './ui/interactive.js';
+import { runInteractiveMenu, waitReturnToMenu } from './ui/interactive.js';
 import chalk from 'chalk';
 import { theme } from './ui/formatter.js';
 
@@ -70,7 +70,57 @@ async function main(): Promise<void> {
   const repairEngine = new RepairEngine(registry, auditLogger);
   const historyStore = new FileHistoryStore();
 
-  // ── Step 5: Set up Commander ──
+  // ── Step 5: Execute ──
+  //
+  // When no arguments are given, launch the interactive menu in a TTY.
+  // In non-interactive environments (pipes, CI) fall back to help output.
+  if (process.argv.length <= 2 && process.stdin.isTTY && process.stdout.isTTY) {
+    const pluginNames = registry.getNames();
+
+    while (true) {
+      console.clear();
+      showBanner();
+      const argv = await runInteractiveMenu(pluginNames, process.argv.slice(0, 2));
+
+      if (!argv) {
+        // User quit menu (Esc / q)
+        break;
+      }
+
+      // Create a fresh Program instance on every iteration to avoid option/parser state leakage
+      const program = buildProgram(PKG_VERSION, registry, engine, repairEngine, config, historyStore);
+      program.exitOverride(); // Prevent process.exit() so we can return to the menu loop on errors/help
+
+      try {
+        await program.parseAsync(argv);
+      } catch (err: any) {
+        // Ignore expected Displayed help exit or other commander exit overrides
+        if (err.code !== 'commander.helpDisplayed' && err.code !== 'commander.executeSubCommandAsync') {
+          console.error(`\n  ${theme.error(`Command error: ${err.message}`)}`);
+        }
+      }
+
+      await waitReturnToMenu();
+    }
+    process.exit(0);
+  } else {
+    // Standard command-line execution
+    const program = buildProgram(PKG_VERSION, registry, engine, repairEngine, config, historyStore);
+    await program.parseAsync(process.argv);
+  }
+}
+
+/**
+ * Build and configure a new Commander Program instance.
+ */
+function buildProgram(
+  version: string,
+  registry: PluginRegistry,
+  engine: DiagnosticEngine,
+  repairEngine: RepairEngine,
+  config: any,
+  historyStore: any,
+): Command {
   const program = new Command();
 
   program
@@ -79,7 +129,7 @@ async function main(): Promise<void> {
       'A plugin-based CLI utility that diagnoses, explains, and safely repairs ' +
         'common development environment issues.',
     )
-    .version(PKG_VERSION, '-V, --version', 'Display the current version')
+    .version(version, '-V, --version', 'Display the current version')
     .option('-q, --quiet', 'Suppress all styling, banners, and spinners');
 
   program.hook('preAction', (thisCommand) => {
@@ -128,25 +178,7 @@ Examples:
 `;
   });
 
-  // When no arguments are given, launch the interactive menu in a TTY.
-  // In non-interactive environments (pipes, CI) fall back to help output.
-  program.action(async () => {
-    if (process.stdin.isTTY && process.stdout.isTTY) {
-      showBanner();
-      const pluginNames = registry.getNames();
-      const argv = await runInteractiveMenu(pluginNames, process.argv.slice(0, 2));
-
-      if (argv) {
-        // Re-parse with the chosen command — Commander dispatches it normally
-        await program.parseAsync(argv);
-      }
-    } else {
-      program.outputHelp();
-    }
-  });
-
-  // ── Step 6: Parse and dispatch ──
-  await program.parseAsync(process.argv);
+  return program;
 }
 
 main().catch((error) => {
