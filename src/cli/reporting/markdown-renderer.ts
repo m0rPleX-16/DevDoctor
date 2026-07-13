@@ -39,19 +39,11 @@ function statusCell(status: CheckStatus): string {
 }
 
 function formatTimestamp(date: Date): string {
-  // Fix #5: use locale-aware formatting so saved reports show local time,
-  // not UTC. toISOString() always outputs UTC which is confusing on
-  // developer machines in non-UTC timezones.
+  // Use ISO 8601 format for saved reports — consistent across all locales,
+  // timezones, and machines. Terminal display uses locale formatting; file
+  // output uses the unambiguous ISO string.
   if (!(date instanceof Date)) return String(date);
-  return date.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZoneName: 'short',
-  });
+  return date.toISOString();
 }
 
 function renderCheck(check: DiagnosticCheck): string {
