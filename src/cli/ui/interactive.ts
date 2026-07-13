@@ -80,6 +80,12 @@ function buildMenuItems(pluginNames: string[]): MenuItem[] {
       description: 'config — init, show, or inspect config file paths',
       args: ['config'],
     },
+    {
+      icon: '❌',
+      label: 'Exit',
+      description: 'exit — quit the interactive Dev Doctor CLI',
+      args: ['exit'],
+    },
   ];
 }
 
@@ -165,6 +171,12 @@ async function pickPlugin(
     const onKey = (chunk: Buffer) => {
       const key = chunk.toString();
 
+      // Ctrl+C
+      if (key === '\u0003') {
+        cleanup();
+        process.exit(0);
+      }
+
       // Esc
       if (key === '\x1B') {
         cleanup();
@@ -229,6 +241,10 @@ async function askYesNo(question: string): Promise<boolean | null> {
       process.stdin.removeListener('data', onKey);
       process.stdin.setRawMode(false);
 
+      if (key === '\u0003') {
+        process.exit(0);
+      }
+
       if (key === '\x1B') {
         process.stdout.write('\n');
         resolve(null);
@@ -264,6 +280,10 @@ async function askChoice(question: string, choices: Array<{ key: string; label: 
       const key = chunk.toString();
       process.stdin.removeListener('data', onKey);
       process.stdin.setRawMode(false);
+
+      if (key === '\u0003') {
+        process.exit(0);
+      }
 
       if (key === '\x1B') {
         process.stdout.write('\n');
@@ -380,6 +400,11 @@ async function askCheckName(): Promise<string | null> {
 
     const onKey = (chunk: Buffer) => {
       const key = chunk.toString();
+
+      if (key === '\u0003') {
+        cleanup();
+        process.exit(0);
+      }
 
       if (key === '\x1B') {
         cleanup();
@@ -586,10 +611,21 @@ export async function runInteractiveMenu(
         } else if (item.args[0] === 'config') {
           const subArgs = await askConfigOptions();
           resolve([...baseArgv, ...subArgs]);
+        } else if (item.args[0] === 'exit') {
+          resolve(null);
         } else {
           resolve([...baseArgv, ...item.args]);
         }
         return;
+      }
+
+      // Ctrl+C — force exit
+      if (key === '\u0003') {
+        process.stdin.removeListener('data', onKey);
+        process.stdin.setRawMode(false);
+        process.stdout.write('\x1B[?25h'); // Restore cursor
+        process.stdout.write('\n');
+        process.exit(0);
       }
 
       // Esc or q — exit
@@ -615,9 +651,13 @@ export async function waitReturnToMenu(): Promise<void> {
     process.stdin.setRawMode(true);
     process.stdin.resume();
 
-    const onKey = () => {
+    const onKey = (chunk: Buffer) => {
+      const key = chunk.toString();
       process.stdin.removeListener('data', onKey);
       process.stdin.setRawMode(false);
+      if (key === '\u0003') {
+        process.exit(0);
+      }
       resolve();
     };
 
