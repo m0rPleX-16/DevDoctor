@@ -7,6 +7,32 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0] — 2026-07-13
+
+### Added
+
+- **Git plugin** (`src/plugins/git/`) — Four diagnostic checks: Git installation and version, global identity (`user.name` / `user.email`), default branch name (`init.defaultBranch`), and SSH key presence in `~/.ssh`.
+- **Interactive menu mode** — Running `devdoctor` with no arguments in a TTY now shows an arrow-key navigation menu instead of the help screen. Esc or `q` exits; non-TTY environments (pipes, CI) fall back to help output unchanged.
+- **Shell completions** (`devdoctor completion <shell>`) — Generates ready-to-source tab-completion scripts for `bash`, `zsh`, `fish`, and `pwsh`. Plugin names and `--format` values are included as completions.
+- **`--format json` on `info` and `env`** — Both commands now accept `-f, --format json` for machine-readable stdout output, consistent with `diagnose` and `doctor`. Banner and spinner are suppressed in JSON mode.
+- **State transition diff on `fix`** — After a successful repair and verification, a before/after block is rendered showing the prior state, the resolved state, and the action taken.
+- **`src/core/engine/status-utils.ts`** — Shared `deriveOverallStatus` utility extracted from the three plugin implementations that each duplicated it.
+- **Plugin contract test suite** (`src/plugins/plugin-contract.test.ts`) — Generic contract harness that validates every registered plugin satisfies the `Plugin` interface. Runs for `node`, `mysql`, and `git`.
+- **CI runs on `dev` branch** — CI workflow now triggers on pushes and PRs targeting `main`, `master`, and `dev`.
+- **Release restricted to `main`** — The release workflow now only fires for `v*` tags originating from `main`, preventing accidental releases from feature branches.
+
+### Fixed
+
+- **Unused imports in `diagnose.ts`** — `defaultOutputFilename` and `connector` were imported but never used; both removed.
+- **`ssh-check.ts` uses async fs** — Replaced synchronous `fs.existsSync` / `fs.readdirSync` with `fs/promises` `readdir`, consistent with the async function signature.
+
+### Changed
+
+- **SSH check detail and suggestion copy** — The pass-path detail now notes that key files must have correct permissions (600) and be loaded in `ssh-agent`. The fail-path suggestion now includes the full `ssh-add` step and a note to register the public key with the hosting provider.
+- **`deriveOverallStatus` centralised** — `node/index.ts`, `mysql/index.ts`, and `git/index.ts` now all import from `status-utils.ts` instead of each carrying a local copy.
+
+---
+
 ## [0.2.2] — 2026-07-13
 
 ### Changed
@@ -101,6 +127,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.3.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.1.0...v0.2.0

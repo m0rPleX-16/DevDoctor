@@ -4,21 +4,23 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.2.1**
+> Current version: **0.3.0**
 
 ---
 
 ## Features
 
-- **Diagnose** — Run health checks on Node.js and MySQL local environments (or custom plugins)
+- **Diagnose** — Run health checks on Node.js, MySQL, and Git environments (or custom plugins)
 - **Explain** — Detailed root causes and educational explanations for every check
-- **Repair** — Safe, confirmation-prompted automatic repairs with rollback support
+- **Repair** — Safe, confirmation-prompted automatic repairs with rollback support and state transition diff
 - **CI-Ready** — `--yes` to auto-confirm repairs and `--dry-run` to preview without changes
 - **Audit Log** — Every repair action is recorded in `~/.devdoctor/history.json`
 - **Security Scan** — Detects dangerous PATH entries and suspected secrets in environment variables
 - **Report** — Generate system health status in terminal, JSON, or Markdown formats
 - **Configuration** — Custom configuration overlays using local `devdoctor.json` files
 - **Extensible** — Dynamic runtime plugin loading directly from filesystem directories
+- **Interactive** — Arrow-key menu when run with no arguments in a TTY
+- **Shell Completions** — Tab completion scripts for bash, zsh, fish, and PowerShell
 
 ---
 
@@ -42,17 +44,23 @@ npm install
 ### Usage
 
 ```bash
-# Show help and available commands
+# Show help and available commands — or just run with no args for the interactive menu
 npx tsx src/cli/index.ts
 
 # Diagnose your Node.js environment
 npx tsx src/cli/index.ts diagnose node
+
+# Diagnose your Git environment
+npx tsx src/cli/index.ts diagnose git
 
 # Diagnose with detailed educational explanations
 npx tsx src/cli/index.ts diagnose node --verbose
 
 # Display system information (includes detected development tools)
 npx tsx src/cli/index.ts info
+
+# Display system information as JSON (CI-friendly)
+npx tsx src/cli/index.ts info --format json
 
 # Display development-relevant environment variables and PATH breakdown
 npx tsx src/cli/index.ts env
@@ -62,6 +70,9 @@ npx tsx src/cli/index.ts doctor
 
 # Safely repair issues detected by a plugin
 npx tsx src/cli/index.ts fix mysql
+
+# Generate shell tab completions
+npx tsx src/cli/index.ts completion bash >> ~/.bashrc
 ```
 
 ---
@@ -81,16 +92,20 @@ Options:
 
 **Available plugins:**
 
-| Plugin  | Description                                                 |
-| :---    | :---                                                        |
-| `node`  | Node.js installation, npm availability, PATH configuration  |
-| `mysql` | MySQL/MariaDB service, TCP port, config, error log checks   |
-
-More plugins (Docker, Git, PostgreSQL, etc.) are planned for future phases.
+| Plugin  | Description                                                        |
+| :---    | :---                                                               |
+| `node`  | Node.js installation, npm availability, PATH configuration         |
+| `mysql` | MySQL/MariaDB service, TCP port, config, error log checks          |
+| `git`   | Git installation, identity config, default branch, SSH key checks  |
 
 ### `devdoctor info`
 
 Display system and environment information including OS, CPU, memory usage, runtime details, and detected development tools.
+
+```text
+Options:
+  -f, --format <format>   Output format: terminal (default), json
+```
 
 ### `devdoctor env`
 
@@ -98,8 +113,9 @@ Display development-relevant environment variables grouped by category. Performs
 
 ```text
 Options:
-  --all    Show ALL environment variables, not just dev-relevant ones
-  --path   Show only the PATH breakdown
+  --all                   Show ALL environment variables, not just dev-relevant ones
+  --path                  Show only the PATH breakdown
+  -f, --format <format>   Output format: terminal (default), json
 ```
 
 Security risks detected:
@@ -110,6 +126,17 @@ Security risks detected:
 ### `devdoctor doctor`
 
 Run a full health check across all registered plugins and scan for installed development tools to produce a unified health dashboard with an overall health score and actionable recommendations.
+
+### `devdoctor completion <shell>`
+
+Generate a shell tab-completion script. Supports `bash`, `zsh`, `fish`, and `pwsh`.
+
+```bash
+devdoctor completion bash  >> ~/.bashrc && source ~/.bashrc
+devdoctor completion zsh   >> ~/.zshrc  && source ~/.zshrc
+devdoctor completion fish  > ~/.config/fish/completions/devdoctor.fish
+devdoctor completion pwsh  >> $PROFILE
+```
 
 ### `devdoctor fix <plugin>`
 
@@ -213,10 +240,12 @@ src/
 │   │   ├── info.ts          #     devdoctor info
 │   │   ├── env.ts           #     devdoctor env
 │   │   ├── doctor.ts        #     devdoctor doctor
-│   │   └── fix.ts           #     devdoctor fix <plugin>
+│   │   ├── fix.ts           #     devdoctor fix <plugin>
+│   │   └── completion.ts    #     devdoctor completion <shell>
 │   └── ui/                  #   Terminal UI helpers
 │       ├── banner.ts        #     Welcome banner (gradient ASCII art)
 │       ├── formatter.ts     #     UI formatting (progress bars, boxes, theme)
+│       ├── interactive.ts   #     Arrow-key interactive menu (no-args TTY mode)
 │       ├── logger.ts        #     Styled logging (chalk)
 │       └── spinner.ts       #     Progress spinner (ora)
 │
@@ -230,16 +259,20 @@ src/
 │   │   └── repair.ts        #     RepairResult, VerificationResult
 │   └── engine/
 │       ├── diagnostic-engine.ts  # Orchestrates plugin diagnostics (concurrent, per-plugin timeout)
-│       └── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
+│       ├── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
+│       └── status-utils.ts       # Shared deriveOverallStatus helper
 │
 ├── plugins/                 # Plugin Layer
 │   ├── plugin-registry.ts   #   Plugin registration and lookup
-│   └── node/                #   Node.js plugin
+│   ├── node/                #   Node.js plugin
+│   ├── mysql/               #   MySQL plugin
+│   └── git/                 #   Git plugin
 │       ├── index.ts         #     Plugin entry point
 │       └── checks/          #     Individual diagnostic checks
-│           ├── version-check.ts
-│           ├── npm-check.ts
-│           └── path-check.ts
+│           ├── installation-check.ts
+│           ├── identity-check.ts
+│           ├── branch-check.ts
+│           └── ssh-check.ts
 │
 ├── infra/                   # Infrastructure Layer
     ├── os/
@@ -418,6 +451,8 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 10    | RepairEngine + CI Fix UX        | ✅ Complete  |
 | 11    | Repair Audit Log                | ✅ Complete  |
 | 12    | Environment Security Checks     | ✅ Complete  |
+| 13    | Git Plugin                      | ✅ Complete  |
+| 14    | UX Improvements                 | ✅ Complete  |
 
 ---
 
@@ -433,16 +468,18 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 
 ## CI/CD Workflow
 
-The repository includes a GitHub Actions Continuous Integration workflow (`.github/workflows/ci.yml`) that validates changes automatically:
+The repository includes two GitHub Actions workflows:
 
-- **Trigger**: Runs on every `push` and `pull_request` targeting the main branches.
+**CI** (`.github/workflows/ci.yml`) — validates every push and pull request:
+
+- **Trigger**: Runs on every `push` and `pull_request` targeting `main` or `dev`.
 - **Matrix Testing**: Builds and tests on Node versions `18.x`, `20.x`, and `22.x`.
-- **Steps**:
-  1. Clones the code.
-  2. Sets up Node.js with caching enabled.
-  3. Installs dependencies using `npm ci`.
-  4. Builds the project (`npm run build`) to ensure type-checking passes.
-  5. Executes all Vitest test suites (`npm test`).
+- **Steps**: install → build → test.
+
+**Release** (`.github/workflows/release.yml`) — publishes on version tags from `main`:
+
+- **Trigger**: `v*` tags pushed on `main` only. Tags on other branches do not trigger a release.
+- **Steps**: build binaries (Windows, Linux, macOS) → create GitHub Release → publish to GitHub Packages.
 
 ---
 
