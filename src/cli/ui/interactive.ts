@@ -74,6 +74,12 @@ function buildMenuItems(pluginNames: string[]): MenuItem[] {
       description: 'rollback — undo the last automated repair for a plugin check',
       args: ['rollback'],
     },
+    {
+      icon: '⚙️ ',
+      label: 'Configuration',
+      description: 'config — init, show, or inspect config file paths',
+      args: ['config'],
+    },
   ];
 }
 
@@ -122,8 +128,9 @@ function clearLines(count: number): void {
 }
 
 function lineCount(items: MenuItem[], selected: number): number {
-  // header + blank + one line per item + selected description line + blank + tip + blank
-  return 2 + items.length + 1 + 3;
+  // header line + blank + one line per item + description line for selected item + blank + tip + blank
+  // Each item always renders exactly 1 line; the selected item renders an extra description line.
+  return 1 + 1 + items.length + 1 + 1 + 1 + 1;
 }
 
 // ── Plugin sub-menu ───────────────────────────────────────────────
@@ -410,8 +417,20 @@ async function askCheckName(): Promise<string | null> {
 }
 
 /**
+ * Known repairable + rollback-supported checks per plugin.
+ * Used to guide the user in the rollback interactive flow.
+ */
+const ROLLBACK_SUPPORTED_CHECKS: Record<string, string[]> = {
+  mysql:  ['mysql-service', 'xampp-process'],
+  node:   ['node-permissions'],
+  python: ['python-venv'],
+};
+
+/**
  * Gather plugin + check name + options for the `rollback` command.
- * Returns full argv flags, or null to cancel.
+ * Shows the known rollback-supported checks for the selected plugin
+ * so the user doesn't have to guess or remember the check name.
+ * Returns full argv, or null to cancel.
  */
 async function askRollbackOptions(
   pluginNames: string[],
@@ -420,7 +439,24 @@ async function askRollbackOptions(
   const plugin = await pickPlugin(pluginNames, 'roll back');
   if (!plugin) return null;
 
-  const checkName = await askCheckName();
+  const supportedChecks = ROLLBACK_SUPPORTED_CHECKS[plugin];
+
+  let checkName: string | null;
+
+  if (supportedChecks && supportedChecks.length > 0) {
+    // Show a guided picker using the known check names
+    checkName = await askChoice(
+      `Which check to roll back for ${plugin}?`,
+      supportedChecks.map((c, i) => ({ key: String(i + 1), label: c, value: c })),
+    );
+  } else {
+    // Plugin not in the known list — fall back to free-form entry with a warning
+    process.stdout.write(
+      `\n  ${theme.muted(`Note: "${plugin}" has no known rollback-supported checks.`)}\n`,
+    );
+    checkName = await askCheckName();
+  }
+
   if (!checkName) return null;
 
   process.stdout.write('\n');
@@ -433,7 +469,20 @@ async function askRollbackOptions(
 
 
 /**
- * Show the interactive menu and return the argv array Commander should parse.
+ * Gather interactive options for the `config` command.
+ * Returns the sub-command argv to dispatch.
+ */
+async function askConfigOptions(): Promise<string[]> {
+  const sub = await askChoice('What would you like to do?', [
+    { key: '1', label: 'init — scaffold devdoctor.json in current directory', value: 'init' },
+    { key: '2', label: 'show — display the resolved configuration',           value: 'show' },
+    { key: '3', label: 'path — print config file paths',                      value: 'path' },
+  ]);
+  if (!sub) return ['config', 'show']; // default to show
+  return ['config', sub];
+}
+
+
  *
  * Returns null if the user exits without selecting (Esc / q).
  *
@@ -533,6 +582,9 @@ export async function runInteractiveMenu(
             return;
           }
           resolve(argv);
+        } else if (item.args[0] === 'config') {
+          const subArgs = await askConfigOptions();
+          resolve([...baseArgv, ...subArgs]);
         } else {
           resolve([...baseArgv, ...item.args]);
         }

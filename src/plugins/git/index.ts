@@ -56,4 +56,8 @@ export class GitPlugin implements Plugin {
       message: `Verification for "${checkName}" is not supported.`,
     };
   }
+
+  canRepair(_checkName: string): boolean {
+    return false;
+  }
 }

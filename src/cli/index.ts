@@ -32,6 +32,7 @@ import { createFixCommand } from './commands/fix.js';
 import { createCompletionCommand } from './commands/completion.js';
 import { createHistoryCommand } from './commands/history.js';
 import { createRollbackCommand } from './commands/rollback.js';
+import { createConfigCommand } from './commands/config.js';
 import { FileHistoryStore } from '../infra/audit/history-store.js';
 import { runInteractiveMenu } from './ui/interactive.js';
 import chalk from 'chalk';
@@ -97,6 +98,7 @@ async function main(): Promise<void> {
   program.addCommand(createCompletionCommand('devdoctor'));
   program.addCommand(createHistoryCommand(historyStore));
   program.addCommand(createRollbackCommand(registry, repairEngine));
+  program.addCommand(createConfigCommand());
 
   program.addHelpText('before', () => {
     showBanner();
@@ -121,6 +123,8 @@ Examples:
   ${chalk.cyan('devdoctor history --last 20')}
   ${chalk.cyan('devdoctor diagnose redis')}
   ${chalk.cyan('devdoctor diagnose python')}
+  ${chalk.cyan('devdoctor config init')}
+  ${chalk.cyan('devdoctor config show')}
 `;
   });
 

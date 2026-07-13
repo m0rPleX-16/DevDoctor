@@ -16,6 +16,9 @@
  * knows about the Plugin interface.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import type { Plugin } from '../../core/types/plugin.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
@@ -24,6 +27,7 @@ import { checkNodeVersion } from './checks/version-check.js';
 import { checkNpm } from './checks/npm-check.js';
 import { checkNodePath } from './checks/path-check.js';
 import { checkNodePermissions } from './checks/permissions-check.js';
+import { runCommand } from '../../infra/os/command-runner.js';
 
 /**
  * Node.js Plugin
@@ -61,7 +65,70 @@ export class NodePlugin implements Plugin {
     };
   }
 
+  canRepair(checkName: string): boolean {
+    return checkName === 'node-permissions';
+  }
+
   async repair(checkName: string): Promise<RepairResult> {
+    if (checkName === 'node-permissions') {
+      try {
+        const isWindows = process.platform === 'win32';
+
+        // 1. Get current prefix so we can support rollback
+        const currentPrefixResult = await runCommand('npm', ['config', 'get', 'prefix']);
+        const oldPrefix = currentPrefixResult.success ? currentPrefixResult.stdout.trim() : undefined;
+
+        if (oldPrefix) {
+          const auditDir = path.join(os.homedir(), '.devdoctor');
+          if (!fs.existsSync(auditDir)) {
+            fs.mkdirSync(auditDir, { recursive: true });
+          }
+          fs.writeFileSync(path.join(auditDir, 'npm-rollback-prefix.txt'), oldPrefix, 'utf-8');
+        }
+
+        // 2. Resolve target prefix
+        let targetPrefix: string;
+        if (isWindows) {
+          const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+          targetPrefix = path.join(appData, 'npm-global');
+        } else {
+          targetPrefix = path.join(os.homedir(), '.npm-global');
+        }
+
+        // 3. Create target directory
+        if (!fs.existsSync(targetPrefix)) {
+          fs.mkdirSync(targetPrefix, { recursive: true });
+        }
+
+        // 4. Set prefix in npm config
+        const setPrefixResult = await runCommand('npm', ['config', 'set', 'prefix', targetPrefix]);
+        if (!setPrefixResult.success) {
+          return {
+            checkName,
+            success: false,
+            message: `Failed to set npm global prefix to "${targetPrefix}".`,
+            detail: setPrefixResult.stderr,
+            rollbackSupported: false,
+          };
+        }
+
+        return {
+          checkName,
+          success: true,
+          message: `Successfully changed npm global prefix to "${targetPrefix}".`,
+          detail: `Old prefix: ${oldPrefix || 'unknown'}. Note: You may need to add "${targetPrefix}" to your system PATH environment variable to run newly installed global commands.`,
+          rollbackSupported: !!oldPrefix,
+        };
+      } catch (err) {
+        return {
+          checkName,
+          success: false,
+          message: `Unexpected error during repair: ${err instanceof Error ? err.message : String(err)}`,
+          rollbackSupported: false,
+        };
+      }
+    }
+
     return {
       checkName,
       success: false,
@@ -71,10 +138,71 @@ export class NodePlugin implements Plugin {
   }
 
   async verify(checkName: string): Promise<VerificationResult> {
+    if (checkName === 'node-permissions') {
+      const checkResult = await checkNodePermissions();
+      return {
+        checkName,
+        success: checkResult.status === 'pass',
+        message: checkResult.message,
+      };
+    }
+
     return {
       checkName,
       success: false,
       message: `Verification for "${checkName}" is not supported.`,
+    };
+  }
+
+  async rollback(checkName: string): Promise<RepairResult> {
+    if (checkName === 'node-permissions') {
+      try {
+        const rollbackFilePath = path.join(os.homedir(), '.devdoctor', 'npm-rollback-prefix.txt');
+        if (!fs.existsSync(rollbackFilePath)) {
+          return {
+            checkName,
+            success: false,
+            message: 'No previous npm prefix was recorded to roll back to.',
+            rollbackSupported: false,
+          };
+        }
+
+        const oldPrefix = fs.readFileSync(rollbackFilePath, 'utf-8').trim();
+        const setPrefixResult = await runCommand('npm', ['config', 'set', 'prefix', oldPrefix]);
+
+        if (!setPrefixResult.success) {
+          return {
+            checkName,
+            success: false,
+            message: `Failed to restore npm global prefix to "${oldPrefix}".`,
+            detail: setPrefixResult.stderr,
+            rollbackSupported: false,
+          };
+        }
+
+        fs.unlinkSync(rollbackFilePath);
+
+        return {
+          checkName,
+          success: true,
+          message: `Successfully rolled back npm global prefix to "${oldPrefix}".`,
+          rollbackSupported: false,
+        };
+      } catch (err) {
+        return {
+          checkName,
+          success: false,
+          message: `Unexpected error during rollback: ${err instanceof Error ? err.message : String(err)}`,
+          rollbackSupported: false,
+        };
+      }
+    }
+
+    return {
+      checkName,
+      success: false,
+      message: `Rollback is not supported for "${checkName}".`,
+      rollbackSupported: false,
     };
   }
 }
