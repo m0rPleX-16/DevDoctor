@@ -148,18 +148,7 @@ export function showBanner(): void {
   // ── Empty row ──
   console.log(boxRow('', innerWidth, 0));
 
-  // Step 1: print shadow lines (shifted right by 2 extra spaces inside box)
-  for (const line of ART_LINES) {
-    // Shadow sits 2 chars right inside the box content area
-    const shadowContent = '  ' + chalk.hex(SHADOW_COLOR)(line);
-    const rawLen = 2 + line.length; // leading spaces + art text
-    console.log(boxRow(shadowContent, innerWidth, rawLen));
-  }
-
-  // Step 2: move cursor back up over the shadow lines
-  process.stdout.write(cursorUp(ART_LINES.length));
-
-  // Step 3: print gradient art on top, shifted left by 1 col vs shadow
+  // Print gradient art
   for (const line of ART_LINES) {
     const gradientContent = ' ' + triGradient(line);
     const rawLen = 1 + line.length;

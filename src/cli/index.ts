@@ -25,6 +25,8 @@ import { createInfoCommand } from './commands/info.js';
 import { createEnvCommand } from './commands/env.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createFixCommand } from './commands/fix.js';
+import chalk from 'chalk';
+import { theme } from './ui/formatter.js';
 
 async function main(): Promise<void> {
   // ── Step 1: Load configuration ──
@@ -62,8 +64,27 @@ async function main(): Promise<void> {
   program.addCommand(createDoctorCommand(engine, config));
   program.addCommand(createFixCommand(registry, engine));
 
-  program.action(() => {
+  program.addHelpText('before', () => {
     showBanner();
+    return '';
+  });
+
+  program.addHelpText('after', () => {
+    const available = registry.list()
+      .map((p) => `${chalk.bold(p.name.padEnd(8))} ${theme.muted(p.description)}`)
+      .join('\n  ');
+    return `
+Available Plugins:
+  ${available}
+
+Examples:
+  ${chalk.cyan('devdoctor diagnose mysql')}
+  ${chalk.cyan('devdoctor fix mysql')}
+  ${chalk.cyan('devdoctor doctor --format json')}
+`;
+  });
+
+  program.action(() => {
     program.outputHelp();
   });
 

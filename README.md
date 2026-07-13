@@ -387,6 +387,51 @@ The repository includes a GitHub Actions Continuous Integration workflow (`.gith
 
 ---
 
+## Non-Developer Guide
+
+For QA engineers, designers, or operations teams who need to verify local configurations, Dev Doctor can be run without setting up a local development environment.
+
+### Option A: Using Node.js (Easiest)
+If you have Node.js installed on your machine, you can run Dev Doctor instantly using `npx` (which downloads and runs the tool automatically without global installation):
+
+```bash
+# Run the environment health check
+npx devdoctor doctor
+
+# Run diagnostics for MySQL
+npx devdoctor diagnose mysql
+
+# Automatically fix database issues
+npx devdoctor fix mysql
+```
+
+### Option B: Standalone Binaries (No Node.js Required)
+If you do not have Node.js installed, you can use the pre-compiled standalone binary for your Operating System:
+
+1. **Navigate to Releases**: Go to the **Releases** section on the right sidebar of the project's GitHub repository page.
+2. **Download the Asset**: Locate the latest release (e.g., `v0.1.0`), expand the **Assets** section, and click to download the binary for your system:
+   - **Windows**: `devdoctor-win.exe`
+   - **macOS**: `devdoctor-macos`
+   - **Linux**: `devdoctor-linux`
+3. **Save and Locate**: Save the file to an accessible folder (e.g. `C:\tools\` or your User folder).
+4. **Grant Execution Permissions (macOS/Linux only)**: Open your Terminal in the folder where the file was saved, and run the following command to allow the system to run it:
+   ```bash
+   chmod +x devdoctor-macos     # On macOS
+   chmod +x devdoctor-linux     # On Linux
+   ```
+5. **Run Commands Directly**: Open your terminal (Command Prompt/PowerShell on Windows, Terminal on macOS/Linux) in the folder where the binary is saved and run:
+   ```bash
+   # Windows Command Prompt / PowerShell
+   devdoctor-win.exe doctor
+   devdoctor-win.exe fix mysql
+
+   # macOS / Linux Terminal
+   ./devdoctor-macos doctor
+   ./devdoctor-macos fix mysql
+   ```
+
+---
+
 ## License
 
 MIT
