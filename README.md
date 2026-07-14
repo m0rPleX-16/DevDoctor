@@ -4,7 +4,7 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.5**
+> Current version: **0.4.6**
 
 ---
 
@@ -128,8 +128,9 @@ Running `devdoctor` with no arguments in a TTY launches an arrow-key navigation 
 | Doctor | "Output format?" → `--format terminal/json/markdown` |
 | Info | "Output format?" → `--format terminal/json` |
 | Env | "PATH only?" → `--path`; if no, "Show all?" → `--all` |
-| History | "Show all recorded runs?" → `--last 100` |
+| History | "How many recent runs?" → last 10 / 25 / 50 / 100 |
 | Rollback | "Last session" (no-args rollback) or "Specific check" → plugin → check name → "Auto-confirm?" → `--yes` |
+| Config | "What would you like to do?" → init / show / path |
 | Clean | Prompts for target: snapshot / history / audit / lock / all |
 
 In non-TTY environments (pipes, CI), running with no arguments falls back to the standard help output unchanged.
@@ -404,10 +405,11 @@ src/
 │   │   ├── env.ts           #     devdoctor env
 │   │   ├── doctor.ts        #     devdoctor doctor
 │   │   ├── fix.ts           #     devdoctor fix <plugin>
-│   │   ├── rollback.ts      #     devdoctor rollback <plugin> <check>
+│   │   ├── rollback.ts      #     devdoctor rollback [plugin] [check]
 │   │   ├── history.ts       #     devdoctor history
 │   │   ├── completion.ts    #     devdoctor completion <shell>
-│   │   └── config.ts        #     devdoctor config [subcommand]
+│   │   ├── config.ts        #     devdoctor config [subcommand]
+│   │   └── clean.ts         #     devdoctor clean <subcommand>
 │   └── ui/                  #   Terminal UI helpers
 │       ├── banner.ts        #     Welcome banner (gradient ASCII art)
 │       ├── formatter.ts     #     UI formatting (progress bars, boxes, theme)
@@ -429,8 +431,7 @@ src/
 │       ├── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
 │       ├── check-runner.ts       # Dependency-aware task runner (runDiagnosticTasks)
 │       ├── snapshot-manager.ts   # Persists repair session snapshots for session rollback
-│       └── status-utils.ts       # deriveOverallStatus + applyDependencySkips
-│
+│       └── status-utils.ts       # deriveOverallStatus + applyDependencySkips│
 ├── plugins/                 # Plugin Layer
 │   ├── plugin-registry.ts   #   Plugin registration and lookup
 │   ├── node/                #   Node.js plugin
@@ -619,7 +620,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | [0017](docs/adr/0017-dependency-aware-checks.md)  | Dependency-aware check ordering with `dependsOn`            |
 | [0018](docs/adr/0018-redis-python-plugins.md)     | Redis and Python plugin decisions                           |
 | [0019](docs/adr/0019-check-runner-and-session-rollback.md) | Dependency-aware check runner, session rollback, auto-elevation |
-| [0020](docs/adr/0020-clean-command.md)           | Standardized `devdoctor clean` command to prune state files |
+| [0020](docs/adr/0020-clean-command.md) | `devdoctor clean` command for state file management |
 
 ---
 
@@ -649,6 +650,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 20    | Snapshot Tests for Renderer Output       | ✅ Complete  |
 | 21    | Node + Python Repair & Rollback          | ✅ Complete  |
 | 22    | Check Runner + Session Rollback          | ✅ Complete  |
+| 23    | Clean Command + State File Management    | ✅ Complete  |
 
 ---
 
@@ -691,7 +693,22 @@ If you have Node.js installed on your machine, first tell npm to resolve the `@m
 npm config set @m0rplex-16:registry https://npm.pkg.github.com
 ```
 
-Now, you can run Dev Doctor instantly using `npx` (no installation required):
+**Install globally** so you can run `devdoctor` from any directory:
+
+```bash
+npm install -g @m0rplex-16/devdoctor
+
+# Run the environment health check
+devdoctor doctor
+
+# Run diagnostics for MySQL
+devdoctor diagnose mysql
+
+# Automatically fix database issues
+devdoctor fix mysql
+```
+
+Or, if you prefer not to install anything, run it on-demand with `npx`:
 
 ```bash
 # Run the environment health check

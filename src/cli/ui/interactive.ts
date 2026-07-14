@@ -140,9 +140,18 @@ function clearLines(count: number): void {
 }
 
 function lineCount(items: MenuItem[], selected: number): number {
-  // header line + blank + one line per item + description line for selected item + blank + tip + blank
-  // Each item always renders exactly 1 line; the selected item renders an extra description line.
-  return 1 + 1 + items.length + 1 + 1 + 1 + 1;
+  // renderMenu writes:
+  //   1  header line
+  //   1  blank
+  //   N  one line per item
+  //   1  description line for the selected item (always emitted)
+  //   1  blank
+  //   1  tip line
+  //   1  trailing blank (from the final \n after lines.join('\n'))
+  // Total = items.length + 6, which matches what process.stdout.write outputs.
+  // The selected param is unused but kept for API compatibility.
+  void selected;
+  return items.length + 6;
 }
 
 // ── Plugin sub-menu ───────────────────────────────────────────────
@@ -385,10 +394,14 @@ async function askEnvOptions(): Promise<string[]> {
  * Returns extra argv flags to append.
  */
 async function askHistoryOptions(): Promise<string[]> {
-  process.stdout.write('\n');
-  const all = await askYesNo('Show all recorded runs? (default: last 10)');
-  if (all === true) return ['--last', '100'];
-  return [];
+  const count = await askChoice('How many recent runs would you like to see?', [
+    { key: '1', label: 'Last 10   (default)', value: '10'  },
+    { key: '2', label: 'Last 25',             value: '25'  },
+    { key: '3', label: 'Last 50',             value: '50'  },
+    { key: '4', label: 'Last 100',            value: '100' },
+  ]);
+  if (!count || count === '10') return [];
+  return ['--last', count];
 }
 
 /**
@@ -516,9 +529,9 @@ async function askRollbackOptions(
 
 /**
  * Gather interactive options for the `clean` command.
- * Returns the sub-command argv to dispatch.
+ * Returns the sub-command argv to dispatch, or null if the user pressed Esc.
  */
-async function askCleanOptions(baseArgv: string[]): Promise<string[]> {
+async function askCleanOptions(baseArgv: string[]): Promise<string[] | null> {
   const sub = await askChoice('What would you like to clean?', [
     { key: '1', label: 'snapshot — repair session snapshot (used by rollback)', value: 'snapshot' },
     { key: '2', label: 'history  — doctor run history (health score timeline)',  value: 'history'  },
@@ -526,7 +539,7 @@ async function askCleanOptions(baseArgv: string[]): Promise<string[]> {
     { key: '4', label: 'lock     — stale fix.lock file',                          value: 'lock'     },
     { key: '5', label: 'all      — remove all of the above',                      value: 'all'      },
   ]);
-  if (!sub) return [...baseArgv, 'clean', 'all'];
+  if (!sub) return null; // Esc → return to main menu, never default to 'all'
   return [...baseArgv, 'clean', sub];
 }
 async function askConfigOptions(): Promise<string[]> {
@@ -645,6 +658,14 @@ export async function runInteractiveMenu(
           resolve([...baseArgv, ...subArgs]);
         } else if (item.args[0] === 'clean') {
           const argv = await askCleanOptions(baseArgv);
+          if (!argv) {
+            // User bailed — restart menu
+            process.stdin.setRawMode(true);
+            rendered = false;
+            render();
+            process.stdin.on('data', onKey);
+            return;
+          }
           resolve(argv);
         } else if (item.args[0] === 'exit') {
           resolve(null);

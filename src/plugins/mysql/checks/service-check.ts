@@ -78,6 +78,6 @@ export async function checkMysqlService(): Promise<DiagnosticCheck> {
     label: 'MySQL System Service',
     status: 'warn',
     message: `MySQL service "${installedService.name}" status is unknown.`,
-    detail: `The system service exists, but we encountered an error query status.`,
+    detail: `The system service exists, but we encountered an error querying its status.`,
   };
 }

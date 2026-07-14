@@ -7,6 +7,34 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.6] — 2026-07-14
+
+### Added
+
+- **`projectMarkers` validation in plugin contract tests** — `plugin-contract.test.ts` now asserts that when a plugin declares `projectMarkers`, it is a non-empty array of non-empty strings. Covers all five built-in plugins.
+- **Snapshot manager injected path** — `SnapshotManager` now accepts an optional `snapshotDir` constructor argument. When omitted, it defaults to `~/.devdoctor/snapshots` as before. This makes the class fully testable without touching the real user directory.
+- **`SnapshotManager` test suite expanded** (`src/core/engine/snapshot-manager.test.ts`) — Tests now run against a temp directory (`os.tmpdir()`) instead of the live `~/.devdoctor` path. New cases added: `clearSnapshot` no-op on missing file, corrupted-JSON recovery on `getLatestSnapshot`, fresh-start after corruption on `recordRepair`, automatic intermediate directory creation, and sequential two-instance write behaviour. Suite grows from 3 to 9 tests.
+- **`devdoctor info` — Project Context section** — When the `registry` is injected, `info` now shows a "Project Context" section listing which plugins were detected in the current directory (via `projectMarkers`) along with the matched files. Only shown when at least one plugin matches. Links to `devdoctor doctor` for next steps.
+- **`devdoctor info` — `--format` validation** — Unknown `--format` values (e.g. `--format markdown`) now produce a clear error instead of silently falling through to JSON output.
+
+### Changed
+
+- **Completion scripts fully updated** — All three generators (bash/zsh, fish, PowerShell) now include: `history`, `rollback`, `config`, `clean` in the command list; `redis` and `python` in the plugin list; sub-command completions for `config init|show|path` and `clean snapshot|history|audit|lock|all`; and `--last` / `--yes` option completions for `history`, `rollback`, and `clean`.
+- **Interactive menu — history picker** — "Show all recorded runs?" yes/no prompt replaced with a four-option numbered picker: last 10 (default) / 25 / 50 / 100. No more silent 100-entry cap disguised as "show all".
+- **Interactive menu — clean Esc behaviour fixed** — Pressing Esc in the clean sub-menu previously dispatched `devdoctor clean all` (destructive default). It now returns `null` and restarts the main menu, consistent with every other sub-menu's Esc handler.
+- **Interactive menu — `lineCount()` ghost line fixed** — The function now correctly counts `items.length + 6` total rendered lines, matching what `renderMenu` actually writes. Previously the count was off by one, causing a ghost line to accumulate with every up/down navigation keystroke.
+- **`devdoctor info` — `createInfoCommand` accepts optional `registry`** — The composition root now passes the registry so the Project Context section can be rendered.
+
+### Fixed
+
+- **MySQL service-check grammar typo** — `"encountered an error query status"` corrected to `"encountered an error querying its status"` in the unknown-status branch of `service-check.ts`.
+- **Redis `installation-check` thin pass-path detail** — The pass-path `detail` now explains Redis versioning milestones (6.0 TLS/ACL, 7.0 multi-part AOF) so the educational standard matches the other plugins.
+- **README project structure tree missing `clean.ts`** — Added to the commands listing.
+- **README roadmap missing Phase 23** — "Clean Command + State File Management" entry added.
+- **README interactive menu table missing Config and History rows** — Both now appear with their correct prompts.
+
+---
+
 ## [0.4.5] — 2026-07-14
 
 ### Added
@@ -306,6 +334,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.6]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.2...v0.4.3
