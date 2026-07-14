@@ -93,7 +93,17 @@ export function createConfigCommand(): Command {
     .action(() => {
       showCompactBanner();
 
-      const resolved = loadConfig();
+      let resolved;
+      try {
+        resolved = loadConfig();
+      } catch (err) {
+        console.log();
+        console.log(`  ${theme.error(`✖ Could not load configuration: ${err instanceof Error ? err.message : String(err)}`)}`);
+        console.log(`  ${theme.muted('Check your devdoctor.json for syntax errors, or run')} ${chalk.white('devdoctor config path')} ${theme.muted('to locate the file.')}`);
+        console.log();
+        process.exitCode = 1;
+        return;
+      }
 
       console.log();
       console.log(`  ${hr('Resolved Configuration', 48)}`);

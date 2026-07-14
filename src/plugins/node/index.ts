@@ -97,6 +97,33 @@ export class NodePlugin implements Plugin {
       try {
         const isWindows = process.platform === 'win32';
 
+        // Guard: if the user has nvm installed, changing the npm prefix breaks
+        // nvm's version management. Detect nvm and bail with a targeted suggestion
+        // instead of silently corrupting their setup.
+        const nvmDir = process.env.NVM_DIR;
+        const nvmExists = nvmDir
+          ? fs.existsSync(nvmDir)
+          : fs.existsSync(path.join(os.homedir(), '.nvm'));
+        const nvmWindowsExists = isWindows && (
+          fs.existsSync(path.join(os.homedir(), 'AppData', 'Roaming', 'nvm')) ||
+          fs.existsSync('C:\\nvm') ||
+          !!process.env.NVM_HOME
+        );
+
+        if (nvmExists || nvmWindowsExists) {
+          return {
+            checkName,
+            success: false,
+            message: 'nvm detected — changing the npm prefix would break nvm\'s version management.',
+            detail:
+              'nvm stores global packages per Node version inside ~/.nvm. Setting a custom ' +
+              'npm prefix in .npmrc conflicts with this and causes `nvm use` to fail.\n' +
+              'The correct fix with nvm is to ensure Node was installed via nvm itself ' +
+              '(not a system package manager), which makes the prefix user-writable automatically.',
+            rollbackSupported: false,
+          };
+        }
+
         // 1. Get current prefix so we can support rollback
         const currentPrefixResult = await runCommand('npm', ['config', 'get', 'prefix']);
         const oldPrefix = currentPrefixResult.success ? currentPrefixResult.stdout.trim() : undefined;
@@ -139,7 +166,16 @@ export class NodePlugin implements Plugin {
           checkName,
           success: true,
           message: `Successfully changed npm global prefix to "${targetPrefix}".`,
-          detail: `Old prefix: ${oldPrefix || 'unknown'}. Note: You may need to add "${targetPrefix}" to your system PATH environment variable to run newly installed global commands.`,
+          detail:
+            `Old prefix: ${oldPrefix || 'unknown'}.\n` +
+            `New prefix: ${targetPrefix}\n\n` +
+            `⚠ Important: Add "${path.join(targetPrefix, 'bin')}" to your PATH so globally ` +
+            `installed commands are accessible:\n` +
+            (isWindows
+              ? `  Open System Properties → Environment Variables → Path → New → paste the path above.`
+              : `  Add this line to your ~/.bashrc or ~/.zshrc:\n` +
+                `  export PATH="${path.join(targetPrefix, 'bin')}:$PATH"\n` +
+                `  Then run: source ~/.bashrc`),
           rollbackSupported: !!oldPrefix,
         };
       } catch (err) {

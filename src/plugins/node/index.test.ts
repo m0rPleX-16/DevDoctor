@@ -52,12 +52,28 @@ describe('NodePlugin Repairs', () => {
           durationMs: 1,
         });
 
-      // Spy on fs methods
-      const writeSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-      const existsSpy = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-      const mkdirSpy = vi.spyOn(fs, 'mkdirSync').mockImplementation(() => ({} as any));
+      // Ensure nvm is not detected (so the guard doesn't block the repair),
+      // but allow all other existsSync calls to proceed normally.
+      const nvmDir = path.join(os.homedir(), '.nvm');
+      const existsSpy = vi.spyOn(fs, 'existsSync').mockImplementation((p) => {
+        if (p === nvmDir) return false;           // no nvm
+        if (typeof p === 'string' && p.includes('nvm')) return false;  // no nvm-windows
+        return true;                              // devdoctor dir + target prefix exist
+      });
+      const writeSpy  = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      const mkdirSpy  = vi.spyOn(fs, 'mkdirSync').mockImplementation(() => ({} as any));
+
+      // Also clear NVM_DIR / NVM_HOME from env for the duration of this test
+      const savedNvmDir  = process.env.NVM_DIR;
+      const savedNvmHome = process.env.NVM_HOME;
+      delete process.env.NVM_DIR;
+      delete process.env.NVM_HOME;
 
       const result = await plugin.repair('node-permissions');
+
+      // Restore env
+      if (savedNvmDir !== undefined) process.env.NVM_DIR = savedNvmDir;
+      if (savedNvmHome !== undefined) process.env.NVM_HOME = savedNvmHome;
 
       expect(result.success).toBe(true);
       expect(result.rollbackSupported).toBe(true);
@@ -67,7 +83,6 @@ describe('NodePlugin Repairs', () => {
         'utf-8'
       );
 
-      // Clean up spies
       writeSpy.mockRestore();
       existsSpy.mockRestore();
       mkdirSpy.mockRestore();

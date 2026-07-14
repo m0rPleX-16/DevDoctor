@@ -15,6 +15,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import type { IHistoryStore } from '../../infra/audit/history-store.js';
+import { FileHistoryStore } from '../../infra/audit/history-store.js';
 import type { HistoryEntry } from '../../core/types/history.js';
 import { theme, hr, progressBar, statusBadge } from '../ui/formatter.js';
 import { showCompactBanner } from '../ui/banner.js';
@@ -80,9 +81,33 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
     .option('-f, --format <format>', 'Output format: terminal (default), json', 'terminal')
     .action(async (options: HistoryOptions) => {
       const format = options.format ?? 'terminal';
-      const last = Math.max(1, parseInt(options.last ?? '10', 10) || 10);
 
-      const all = historyStore.read();
+      // Validate --format
+      if (format !== 'terminal' && format !== 'json') {
+        console.error(`  ${theme.error(`✖ Unknown format: "${format}". Use terminal or json.`)}`);
+        process.exitCode = 1;
+        return;
+      }
+
+      // Validate --last
+      const rawLast = options.last ?? '10';
+      const parsedLast = parseInt(rawLast, 10);
+      if (isNaN(parsedLast) || parsedLast < 1) {
+        console.error(`  ${theme.error(`✖ Invalid value for --last: "${rawLast}". Must be a positive integer.`)}`);
+        process.exitCode = 1;
+        return;
+      }
+      const last = parsedLast;
+
+      let all: HistoryEntry[];
+      try {
+        all = historyStore.read();
+      } catch (err) {
+        console.error(`  ${theme.error(`✖ Could not read history: ${err instanceof Error ? err.message : String(err)}`)}`);
+        console.error(`  ${theme.muted('The history file may be corrupted. Run')} ${chalk.white('devdoctor clean history')} ${theme.muted('to reset it.')}`);
+        process.exitCode = 1;
+        return;
+      }
       const entries = all.slice(-last);
 
       // ── JSON format ──
@@ -154,7 +179,6 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
       console.log();
       console.log(`  ${hr(undefined, 48)}`);
       console.log();
-      const { FileHistoryStore } = await import('../../infra/audit/history-store.js');
       console.log(
         `  ${theme.muted('History file:')} ${chalk.white(FileHistoryStore.filePath)}`,
       );
