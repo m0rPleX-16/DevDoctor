@@ -39,7 +39,7 @@ export async function checkMysqlService(): Promise<DiagnosticCheck> {
       suggestion:
         'If you expect MySQL to run as a service, verify the installation. If using XAMPP ' +
         'or a local portable folder, start the database manually via the XAMPP Control Panel ' +
-        'or mysql\\bin\\mysqld.exe.',
+        'or mysql\\bin\\mysqld.exe. Note: MySQL 9.x registers as "MySQL90" on Windows.',
     };
   }
 

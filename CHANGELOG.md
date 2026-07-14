@@ -7,6 +7,38 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.7] — 2026-07-14
+
+### Added
+
+- **nvm detection in `node-permissions` repair** — Before changing the npm global prefix, the repair now checks for nvm (`NVM_DIR`, `~/.nvm`, nvm-windows paths). If nvm is detected, the repair returns a clear explanation of why it cannot proceed (changing the prefix breaks `nvm use`) and what to do instead. Previously it would silently corrupt the nvm setup.
+- **Poetry and uv environment detection in `python-venv` check** — The check now recognises `POETRY_ACTIVE=1` (Poetry shell) and `UV_PROJECT_ENVIRONMENT` (uv) as active environments alongside `VIRTUAL_ENV` and Conda.
+- **Local `.venv` / `venv` directory detection** — If a valid venv directory with activation scripts exists in the current directory but hasn't been activated in the current shell (common with VS Code, PyCharm, and uv), the check now returns `pass` with a note explaining how to activate it manually — instead of falsely warning.
+- **Context-aware `python-venv` check** — The venv warning is now only issued when the current directory contains a Python project marker (`requirements.txt`, `pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile`, `.python-version`, `uv.lock`, `poetry.lock`). Running `devdoctor doctor` from a Node-only project or an unrelated directory no longer produces a spurious venv warning.
+- **MySQL 9.x service name** — `MySQL90` added to `MYSQL_WINDOWS_SERVICES` ahead of `MySQL80`. Fresh MySQL 9 installs on Windows now register their service name correctly.
+
+### Changed
+
+- **`mysql-port` repair — graceful kill on Unix** — The port-conflict repair previously used `kill -9` (SIGKILL) immediately on Unix, which bypasses the process's shutdown handler and can leave InnoDB in a corrupted state. It now tries `kill -15` (SIGTERM) first, and only escalates to `kill -9` if SIGTERM fails.
+- **`node-permissions` repair detail message** — On success, the detail now explicitly shows the exact `bin/` directory that needs to be added to `PATH`, with platform-specific instructions (System Properties on Windows, shell profile on Unix).
+- **`history` command — `--last` validation** — Non-numeric values (e.g. `--last abc`) now produce a clear error message instead of silently defaulting to 10.
+- **`history` command — `--format` validation** — Unknown format values now produce an error, consistent with `info` and `doctor`.
+- **`history` command — `historyStore.read()` guarded** — A corrupted `runs.json` no longer crashes with an unhandled exception. The error is caught and a message is shown directing the user to `devdoctor clean history`.
+- **`history` command — static import** — The dynamic `await import('../../infra/audit/history-store.js')` at the bottom of the action handler replaced with a static top-level import.
+- **`config show` — `loadConfig()` guarded** — A `devdoctor.json` with invalid JSON no longer crashes `devdoctor config show` with an unhandled exception. The error is caught and a message is shown directing the user to `devdoctor config path`.
+- **MySQL constants consistency** — `MYSQL_CONFIG_PATHS_WINDOWS` now lists MySQL 9.0 paths before 8.0 paths, consistent with the updated `MYSQL_WINDOWS_SERVICES` priority order.
+- **`python-venv` suggestion enriched** — The warning now mentions `uv sync`, `poetry install`, and `pipenv install` as alternatives to `python3 -m venv`, reflecting modern Python tooling.
+
+### Fixed
+
+- **False positive `python-venv` warning in non-Python projects** — Previously the check warned about a missing venv regardless of whether the current directory had anything to do with Python. Now only Python projects trigger the warning.
+- **False positive `python-venv` warning when venv exists but isn't shell-activated** — A `.venv` directory created by uv, Poetry, or a manual `python -m venv` that exists in the project but isn't activated in the current shell session now correctly reports `pass` instead of `warn`.
+- **nvm users silently broken by `node-permissions` repair** — The repair now detects nvm and refuses rather than overwriting the npm prefix, which would cause `nvm use` to fail with an incompatibility error on subsequent runs.
+- **`XAMPP_MYSQLD_FALLBACK_PATHS` duplicate entries removed** — The constants file previously had duplicate path entries. Now contains exactly one entry per installation path.
+- **Node repair test fragile on nvm machines** — `node/index.test.ts` now explicitly removes `NVM_DIR`/`NVM_HOME` from the environment and mocks nvm path checks during the repair test, so the test passes on any machine regardless of whether nvm is installed.
+
+---
+
 ## [0.4.6] — 2026-07-14
 
 ### Added
@@ -334,6 +366,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.7]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.3...v0.4.4

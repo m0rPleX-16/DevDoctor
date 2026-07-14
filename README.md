@@ -4,7 +4,7 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.6**
+> Current version: **0.4.7**
 
 ---
 

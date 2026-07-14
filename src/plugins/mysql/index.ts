@@ -330,7 +330,14 @@ export class MysqlPlugin implements Plugin {
 
       const killResult = isWindows
         ? await runCommand('taskkill', ['/f', '/pid', String(ownerNow.pid)])
-        : await runCommand('kill', ['-9', String(ownerNow.pid)]);
+        : await (async () => {
+            // Try graceful SIGTERM first to avoid leaving InnoDB in a corrupted state.
+            // If the process is still alive after 2 s, escalate to SIGKILL.
+            const term = await runCommand('kill', ['-15', String(ownerNow.pid)]);
+            if (term.success) return term;
+            // SIGTERM failed (process already gone or permission denied) — try SIGKILL
+            return runCommand('kill', ['-9', String(ownerNow.pid)]);
+          })();
 
       if (killResult.success) {
         return {
