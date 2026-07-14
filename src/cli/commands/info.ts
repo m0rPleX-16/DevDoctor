@@ -58,7 +58,7 @@ export function createInfoCommand(): Command {
 
       // Operating System section
       console.log();
-      console.log(sectionHeader('Operating System', '💻'));
+      console.log(sectionHeader('Operating System', theme.accent('❖')));
       console.log(connector());
       console.log(field('Platform', info.os.name));
       console.log(field('Architecture', info.os.architecture));
@@ -66,14 +66,14 @@ export function createInfoCommand(): Command {
 
       // CPU section
       console.log();
-      console.log(sectionHeader('CPU', '⚡'));
+      console.log(sectionHeader('CPU', theme.accent('✦')));
       console.log(connector());
       console.log(field('Model', info.cpu.model));
       console.log(field('Cores', `${info.cpu.cores} logical cores`));
 
       // Memory section
       console.log();
-      console.log(sectionHeader('Memory', '🧠'));
+      console.log(sectionHeader('Memory', theme.accent('⬡')));
       console.log(connector());
       console.log(field('Total', formatBytes(info.memory.totalBytes)));
       console.log(field('Used', formatBytes(info.memory.usedBytes)));
@@ -83,7 +83,7 @@ export function createInfoCommand(): Command {
 
       // Runtime section
       console.log();
-      console.log(sectionHeader('Runtime', '🔧'));
+      console.log(sectionHeader('Runtime', theme.accent('⚙')));
       console.log(connector());
       console.log(field('Node.js', info.runtime.nodeVersion));
       if (info.runtime.npmVersion) {
@@ -95,7 +95,7 @@ export function createInfoCommand(): Command {
       // Development Tools section
       if (info.tools.length > 0) {
         console.log();
-        console.log(sectionHeader('Development Tools', '🧰'));
+        console.log(sectionHeader('Development Tools', theme.accent('⚒')));
         console.log(connector());
 
         const installed = info.tools.filter((t) => t.installed);

@@ -133,7 +133,7 @@ export class PythonPlugin implements Plugin {
           success: true,
           message: `Successfully created Python virtual environment inside ".venv" using ${pythonCmd}.`,
           detail: `Created virtualenv at: ${venvDir}\n` +
-            `👉 Tip: You still need to activate it in your terminal by running:\n` +
+            `›  Tip: You still need to activate it in your terminal by running:\n` +
             `   - Windows: .venv\\Scripts\\activate\n` +
             `   - macOS/Linux: source .venv/bin/activate`,
           rollbackSupported: true,

@@ -88,7 +88,7 @@ Note:
         console.log(`  ${theme.warning('⚠ You are about to roll back all repairs from the last session.')}\n`);
 
         if (!autoConfirm) {
-          const confirmed = await askConfirmation(`  ${theme.primary('👉')}  Proceed with rollback? (y/N): `);
+          const confirmed = await askConfirmation(`  ${theme.primary('›')}  Proceed with rollback? (y/N): `);
           if (!confirmed) {
             console.log(`\n  ${theme.muted('Rollback cancelled.')}\n`);
             return;
@@ -149,7 +149,7 @@ Note:
       console.log(`  ${theme.muted('Check: ')}  ${chalk.white(checkName)}\n`);
 
       if (!autoConfirm) {
-        const confirmed = await askConfirmation(`  ${theme.primary('👉')}  Proceed with rollback? (y/N): `);
+        const confirmed = await askConfirmation(`  ${theme.primary('›')}  Proceed with rollback? (y/N): `);
         if (!confirmed) {
           console.log(`\n  ${theme.muted('Rollback cancelled.')}\n`);
           return;

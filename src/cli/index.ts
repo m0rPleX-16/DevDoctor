@@ -33,6 +33,7 @@ import { createCompletionCommand } from './commands/completion.js';
 import { createHistoryCommand } from './commands/history.js';
 import { createRollbackCommand } from './commands/rollback.js';
 import { createConfigCommand } from './commands/config.js';
+import { createCleanCommand } from './commands/clean.js';
 import { FileHistoryStore } from '../infra/audit/history-store.js';
 import { runInteractiveMenu, waitReturnToMenu } from './ui/interactive.js';
 import chalk from 'chalk';
@@ -149,6 +150,7 @@ function buildProgram(
   program.addCommand(createHistoryCommand(historyStore));
   program.addCommand(createRollbackCommand(registry, repairEngine));
   program.addCommand(createConfigCommand());
+  program.addCommand(createCleanCommand());
 
   program.addHelpText('before', () => {
     showBanner();
@@ -175,6 +177,9 @@ Examples:
   ${chalk.cyan('devdoctor diagnose python')}
   ${chalk.cyan('devdoctor config init')}
   ${chalk.cyan('devdoctor config show')}
+  ${chalk.cyan('devdoctor clean snapshot')}
+  ${chalk.cyan('devdoctor clean lock')}
+  ${chalk.cyan('devdoctor clean all --yes')}
 `;
   });
 
