@@ -60,7 +60,7 @@ function renderCheck(check: DiagnosticCheck, verbose: boolean, isLast: boolean):
 
   if (check.suggestion && check.status !== 'pass') {
     console.log(`  ${treeIndent}`);
-    const suggLines = ('💡 ' + check.suggestion).split('\n');
+    const suggLines = ('✦ ' + check.suggestion).split('\n');
     console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')(suggLines[0])}`);
     for (let i = 1; i < suggLines.length; i++) {
       console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')(suggLines[i])}`);

@@ -4,7 +4,7 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.4**
+> Current version: **0.4.5**
 
 ---
 
@@ -110,13 +110,13 @@ Running `devdoctor` with no arguments in a TTY launches an arrow-key navigation 
 ```text
   Use ↑ ↓ arrows to navigate, Enter to select, Esc/q to exit.
 
-  ❯  🩺  Full health check
+  ❯  ❖  Full health check
           doctor — runs all plugins and shows a health dashboard
 
-     🔍  Diagnose a plugin
-     🔧  Fix issues
-     ℹ️   System info
-     📋  Environment variables
+     ⌕  Diagnose a plugin
+     ⚒  Fix issues
+     ℹ  System info
+     ☰  Environment variables
 
   Tip: Run devdoctor --help or devdoctor <command> --help for advanced flags.
 ```
@@ -129,7 +129,8 @@ Running `devdoctor` with no arguments in a TTY launches an arrow-key navigation 
 | Info | "Output format?" → `--format terminal/json` |
 | Env | "PATH only?" → `--path`; if no, "Show all?" → `--all` |
 | History | "Show all recorded runs?" → `--last 100` |
-| Rollback | Prompts for plugin → check name → "Auto-confirm?" → `--yes` |
+| Rollback | "Last session" (no-args rollback) or "Specific check" → plugin → check name → "Auto-confirm?" → `--yes` |
+| Clean | Prompts for target: snapshot / history / audit / lock / all |
 
 In non-TTY environments (pipes, CI), running with no arguments falls back to the standard help output unchanged.
 
@@ -286,6 +287,32 @@ devdoctor config path
 
 # Scaffold a default project-level devdoctor.json config in the current directory
 devdoctor config init
+```
+
+---
+
+### `devdoctor clean <subcommand>`
+
+Remove Dev Doctor state files from `~/.devdoctor/`. Every subcommand confirms before deleting unless `--yes` is passed.
+
+| Subcommand | Deletes | When to use |
+|---|---|---|
+| `snapshot` | `snapshots/latest.json` | After confirming repairs are good; clears pending rollback target |
+| `history` | `runs.json` | Reset health score timeline |
+| `audit` | `history.json` | Clear repair audit log |
+| `lock` | `fix.lock` | Remove a stale lock left by a crashed `fix` run |
+| `all` | All of the above | Full state reset |
+
+```text
+Options:
+  -y, --yes     Auto-confirm without prompting (for scripted environments)
+```
+
+```bash
+devdoctor clean snapshot            # Clear the repair session snapshot
+devdoctor clean lock                # Unstick a stale fix.lock
+devdoctor clean history --yes       # Reset run history, no prompt
+devdoctor clean all                 # Wipe all state files
 ```
 
 ---
@@ -592,6 +619,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | [0017](docs/adr/0017-dependency-aware-checks.md)  | Dependency-aware check ordering with `dependsOn`            |
 | [0018](docs/adr/0018-redis-python-plugins.md)     | Redis and Python plugin decisions                           |
 | [0019](docs/adr/0019-check-runner-and-session-rollback.md) | Dependency-aware check runner, session rollback, auto-elevation |
+| [0020](docs/adr/0020-clean-command.md)           | Standardized `devdoctor clean` command to prune state files |
 
 ---
 

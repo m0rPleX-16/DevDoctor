@@ -62,9 +62,9 @@ function calculateHealthScore(diagnostics: DiagnosticResult[]) {
 
 function healthDisplay(status: HealthStatus) {
   switch (status) {
-    case 'healthy':   return { label: 'Healthy',   icon: '💚', colorFn: theme.success };
-    case 'degraded':  return { label: 'Degraded',  icon: '💛', colorFn: theme.warning };
-    case 'unhealthy': return { label: 'Unhealthy', icon: '❤️',  colorFn: theme.error };
+    case 'healthy':   return { label: 'Healthy',   icon: theme.success('●'), colorFn: theme.success };
+    case 'degraded':  return { label: 'Degraded',  icon: theme.warning('▲'), colorFn: theme.warning };
+    case 'unhealthy': return { label: 'Unhealthy', icon: theme.error('✖'),  colorFn: theme.error };
   }
 }
 
@@ -177,7 +177,7 @@ export function createDoctorCommand(
 
       if (diagnostics.length > 0) {
         console.log();
-        console.log(sectionHeader('Plugin Diagnostics', '🔍'));
+        console.log(sectionHeader('Plugin Diagnostics', theme.primary('⌕')));
         console.log(connector());
 
         // ── Project-context grouping ──────────────────────────────
@@ -239,13 +239,13 @@ export function createDoctorCommand(
         }
       } else {
         console.log();
-        console.log(sectionHeader('Plugin Diagnostics', '🔍'));
+        console.log(sectionHeader('Plugin Diagnostics', theme.primary('⌕')));
         console.log(connector());
         console.log(`  ${theme.muted('│')}  ${theme.muted('No plugins registered.')}`);
       }
 
       console.log();
-      console.log(sectionHeader('Development Tools', '🧰'));
+      console.log(sectionHeader('Development Tools', theme.accent('⚒')));
       console.log(connector());
       const installedCount = tools.filter((t) => t.installed).length;
       console.log(`  ${theme.muted('│')}  ${theme.muted(`${installedCount} of ${tools.length} tools detected`)}`);
@@ -283,7 +283,7 @@ export function createDoctorCommand(
 
       if (recommendations.length > 0) {
         console.log();
-        console.log(sectionHeader(`Recommendations (${recommendations.length})`, '💡'));
+        console.log(sectionHeader(`Recommendations (${recommendations.length})`, theme.highlight('✦')));
         console.log(connector());
         recommendations.forEach((c, i) => {
           const badge = statusBadge(c.status);

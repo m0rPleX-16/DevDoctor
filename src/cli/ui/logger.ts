@@ -45,7 +45,7 @@ export const logger = {
 
   /** A suggestion or recommendation — magenta with a lightbulb */
   suggestion(message: string): void {
-    console.log(chalk.hex('#A78BFA')(`  💡 ${message}`));
+    console.log(chalk.hex('#A78BFA')(`  ✦ ${message}`));
   },
 
   /** A styled section header with optional label */

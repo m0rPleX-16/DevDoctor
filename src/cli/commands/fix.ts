@@ -254,7 +254,7 @@ async function runFix(
       console.log(`  ${theme.primary('┃')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
       console.log(`  ${theme.primary('│')}     ${theme.muted(check.message)}`);
       if (check.suggestion) {
-        const suggLines = ('💡 ' + check.suggestion).split('\n');
+        const suggLines = ('✦ ' + check.suggestion).split('\n');
         console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')(suggLines[0])}`);
         for (let i = 1; i < suggLines.length; i++) {
           console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')(suggLines[i])}`);
@@ -316,7 +316,7 @@ async function runFix(
     // Confirmation
     if (!autoConfirm) {
       const confirmed = await askConfirmation(
-        `  ${theme.primary('👉')}  Do you want to attempt this repair? (y/N): `,
+        `  ${theme.primary('›')}  Do you want to attempt this repair? (y/N): `,
       );
       if (!confirmed) {
         console.log(`  ${theme.primary('│')}  ${theme.muted('→ Skipping.')}`);
@@ -381,7 +381,7 @@ async function runFix(
 
       if (repairResult.rollbackSupported) {
         console.log(`  ${theme.primary('│')}`);
-        console.log(`  ${theme.primary('│')}  ${theme.warning('↩  Repair flagged as rollback-supported. Attempting rollback...')}`);
+        console.log(`  ${theme.primary('│')}  ${theme.warning('↺  Repair flagged as rollback-supported. Attempting rollback...')}`);
         const rollbackSpinner = createSpinner('Rolling back...');
         const rollbackResult = await repairEngine.runRollback(pluginName, check.name, false);
         rollbackSpinner.stop();

@@ -30,13 +30,13 @@ import { ENV_CATEGORY_LABELS, type EnvCategory, type EnvVariable, type EnvSecuri
 
 /** Icons for each environment category */
 const CATEGORY_ICONS: Record<EnvCategory, string> = {
-  system: '🖥️',
-  node: '🟢',
-  java: '☕',
-  python: '🐍',
-  docker: '🐳',
-  git: '📦',
-  other: '📋',
+  system: theme.primary('⚙'),
+  node: theme.success('●'),
+  java: theme.warning('♨'),
+  python: theme.primary('✦'),
+  docker: theme.accent('⬡'),
+  git: theme.accent('⧉'),
+  other: theme.muted('☰'),
 };
 
 /**
@@ -70,7 +70,7 @@ function renderVariable(v: EnvVariable, showDescription: boolean): void {
  */
 function renderPath(entries: Array<{ path: string; index: number; exists: boolean }>): void {
   console.log();
-  console.log(sectionHeader('PATH Entries', '🔗'));
+  console.log(sectionHeader('PATH Entries', theme.primary('☰')));
   console.log(connector());
   console.log(`  ${theme.muted('│')}  ${theme.muted(`${entries.length} directories · Priority: top = highest`)}`);
   console.log(connector());
@@ -98,7 +98,7 @@ function renderPath(entries: Array<{ path: string; index: number; exists: boolea
  */
 function renderSecurityRisks(risks: EnvSecurityRisk[]): void {
   console.log();
-  console.log(sectionHeader('Security Risks', '🔒'));
+  console.log(sectionHeader('Security Risks', theme.error('⚠')));
   console.log(connector());
   console.log(`  ${theme.muted('│')}  ${theme.warning(`${risks.length} risk(s) detected in your environment.`)}`);
   console.log(connector());
@@ -109,7 +109,7 @@ function renderSecurityRisks(risks: EnvSecurityRisk[]): void {
 
     console.log(`  ${theme.muted('│')}  ${badge}  ${titleColor(risk.title)}`);
     console.log(`  ${theme.muted('│')}     ${theme.muted(risk.detail)}`);
-    const riskSuggLines = ('💡 ' + risk.suggestion).split('\n');
+    const riskSuggLines = ('✦ ' + risk.suggestion).split('\n');
     console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')(riskSuggLines[0])}`);
     for (let i = 1; i < riskSuggLines.length; i++) {
       console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')(riskSuggLines[i])}`);

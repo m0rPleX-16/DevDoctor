@@ -33,55 +33,61 @@ function buildMenuItems(pluginNames: string[]): MenuItem[] {
   const pluginList = pluginNames.join(', ');
   return [
     {
-      icon: '🩺',
+      icon: theme.success('❖'),
       label: 'Full health check',
       description: 'doctor — runs all plugins and shows a health dashboard',
       args: ['doctor'],
     },
     {
-      icon: '🔍',
+      icon: theme.primary('⌕'),
       label: 'Diagnose a plugin',
       description: `diagnose — choose from: ${pluginList}`,
       args: ['diagnose'],
     },
     {
-      icon: '🔧',
+      icon: theme.warning('⚒'),
       label: 'Fix issues',
       description: `fix — choose from: ${pluginList}`,
       args: ['fix'],
     },
     {
-      icon: 'ℹ️ ',
+      icon: theme.accent('ℹ'),
       label: 'System info',
       description: 'info — OS, CPU, memory, runtime, detected tools',
       args: ['info'],
     },
     {
-      icon: '📋',
+      icon: theme.accent('☰'),
       label: 'Environment variables',
-      description: 'env — dev vars grouped by category with PATH validation',
+      description: 'env — PATH breakdown and security check',
       args: ['env'],
     },
     {
-      icon: '📈',
+      icon: theme.accent('⧉'),
       label: 'Health history',
-      description: 'history — timeline of past health check scores',
+      description: 'history — view timeline of past health check scores',
       args: ['history'],
     },
     {
-      icon: '↩️ ',
+      icon: theme.highlight('↺'),
       label: 'Roll back a repair',
       description: 'rollback — undo the last session or a specific repair',
       args: ['rollback'],
     },
     {
-      icon: '⚙️ ',
+      icon: theme.secondary('⚙'),
       label: 'Configuration',
       description: 'config — init, show, or inspect config file paths',
       args: ['config'],
     },
     {
-      icon: '❌',
+      icon: theme.muted('◇'),
+      label: 'Clean state files',
+      description: 'clean — remove snapshot, history, audit log, or lock file',
+      args: ['clean'],
+    },
+    {
+      icon: theme.error('×'),
       label: 'Exit',
       description: 'exit — quit the interactive Dev Doctor CLI',
       args: ['exit'],
@@ -509,9 +515,20 @@ async function askRollbackOptions(
 
 
 /**
- * Gather interactive options for the `config` command.
+ * Gather interactive options for the `clean` command.
  * Returns the sub-command argv to dispatch.
  */
+async function askCleanOptions(baseArgv: string[]): Promise<string[]> {
+  const sub = await askChoice('What would you like to clean?', [
+    { key: '1', label: 'snapshot — repair session snapshot (used by rollback)', value: 'snapshot' },
+    { key: '2', label: 'history  — doctor run history (health score timeline)',  value: 'history'  },
+    { key: '3', label: 'audit    — repair audit log',                             value: 'audit'    },
+    { key: '4', label: 'lock     — stale fix.lock file',                          value: 'lock'     },
+    { key: '5', label: 'all      — remove all of the above',                      value: 'all'      },
+  ]);
+  if (!sub) return [...baseArgv, 'clean', 'all'];
+  return [...baseArgv, 'clean', sub];
+}
 async function askConfigOptions(): Promise<string[]> {
   const sub = await askChoice('What would you like to do?', [
     { key: '1', label: 'init — scaffold devdoctor.json in current directory', value: 'init' },
@@ -626,6 +643,9 @@ export async function runInteractiveMenu(
         } else if (item.args[0] === 'config') {
           const subArgs = await askConfigOptions();
           resolve([...baseArgv, ...subArgs]);
+        } else if (item.args[0] === 'clean') {
+          const argv = await askCleanOptions(baseArgv);
+          resolve(argv);
         } else if (item.args[0] === 'exit') {
           resolve(null);
         } else {

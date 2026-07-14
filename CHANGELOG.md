@@ -7,6 +7,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.5] — 2026-07-14
+
+### Added
+
+- **`devdoctor clean` command (`src/cli/commands/clean.ts`)** — A new command to prune persistent state files from `~/.devdoctor/`. Supports five targeted subcommands:
+  - `snapshot` — deletes `snapshots/latest.json` (clears rollback session history, with warning output).
+  - `history` — deletes `runs.json` (resets doctor run timeline history).
+  - `audit` — deletes `history.json` (clears the repair audit logs).
+  - `lock` — deletes `fix.lock` (recovers from crashed fix runs).
+  - `all` — wipes all of the above.
+  Supports `-y` / `--yes` for auto-confirming in scripted/non-TTY environments. (ADR-0020)
+- **Interactive "Clean state files" menu option (`src/cli/ui/interactive.ts`)** — Adds a "🧹 Clean state files" entry to the interactive TTY main menu with a secondary choice prompt mapping to the five subcommands.
+- **ADR-0020** — Clean command design documented.
+
+### Changed
+
+- **`README.md` documentation** — Added documentation section for `devdoctor clean` command usage and table explaining subcommands.
+- **Modernized CLI Terminal Icons** — Replaced all emojis in CLI outputs and interactive menus (including `doctor`, `info`, `env`, `fix`, `diagnose`, `rollback`, and `clean`) with clean, themed, geometric Unicode symbols (like `❖`, `⌕`, `⚒`, `ℹ`, `☰`, `⧉`, `↺`, `⚙`, `◇`, `×`) to improve terminal compatibility, rendering robustness, and design polish.
+
+---
+
 ## [0.4.4] — 2026-07-14
 
 ### Added
@@ -285,6 +306,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.5]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.1...v0.4.2
