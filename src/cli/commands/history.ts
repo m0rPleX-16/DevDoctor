@@ -24,12 +24,18 @@ import { showCompactBanner } from '../ui/banner.js';
 function formatTimestamp(iso: string): string {
   try {
     const d = new Date(iso);
-    return d.toLocaleString(undefined, {
+    const formatted = d.toLocaleString(undefined, {
       month: 'short',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
     });
+    // Append UTC offset so timestamps are unambiguous across timezones
+    const offsetMins = d.getTimezoneOffset();
+    const sign = offsetMins <= 0 ? '+' : '-';
+    const abs = Math.abs(offsetMins);
+    const offsetStr = `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+    return `${formatted} ${offsetStr}`;
   } catch {
     return iso;
   }
@@ -93,8 +99,12 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
       console.log();
 
       if (entries.length === 0) {
-        console.log(`  ${theme.muted('No history found.')}`);
-        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor doctor')} ${theme.muted('to record your first health check.')}`);
+        console.log(`  ${theme.muted('No history recorded yet.')}`);
+        console.log();
+        console.log(`  ${theme.muted('Dev Doctor records a snapshot after every')} ${chalk.white('devdoctor doctor')} ${theme.muted('run.')}`);
+        console.log(`  ${theme.muted('Each snapshot captures your health score, check counts, and per-plugin status.')}`);
+        console.log();
+        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor doctor')} ${theme.muted('to record your first entry.')}`);
         console.log();
         return;
       }
@@ -107,13 +117,13 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
 
       // Header row
       console.log(
-        `  ${theme.muted('Date/Time'.padEnd(17))}` +
+        `  ${theme.muted('Date/Time'.padEnd(24))}` +
         `${theme.muted('Score'.padEnd(7))}` +
         `${theme.muted('Bar'.padEnd(32))}` +
         `${theme.muted('Status'.padEnd(11))}` +
         `${theme.muted('Checks')}`,
       );
-      console.log(`  ${theme.muted('─'.repeat(78))}`);
+      console.log(`  ${theme.muted('─'.repeat(85))}`);
 
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
@@ -128,7 +138,7 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
           (entry.failedChecks > 0 ? chalk.red(` ${entry.failedChecks}✗`) : '') +
           (entry.warningChecks > 0 ? chalk.yellow(` ${entry.warningChecks}⚠`) : ''),
         );
-        const time = theme.muted(formatTimestamp(entry.timestamp).padEnd(16));
+        const time = theme.muted(formatTimestamp(entry.timestamp).padEnd(23));
 
         console.log(`  ${time} ${trend} ${score}  ${bar}  ${statusLabel} ${checksInfo}`);
 
@@ -137,7 +147,7 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
           (s) => s === 'fail' || s === 'warn',
         );
         if (hasIssues) {
-          console.log(`  ${' '.repeat(17)}   ${renderPluginSummary(entry.pluginSummary)}`);
+          console.log(`  ${' '.repeat(24)}   ${renderPluginSummary(entry.pluginSummary)}`);
         }
       }
 

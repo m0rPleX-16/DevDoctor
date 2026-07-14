@@ -31,6 +31,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`RepairEngine`** — Injects `SnapshotManager` and records each successful repair (where `rollbackSupported: true`) to the snapshot after `plugin.repair()` returns.
 - **`devdoctor rollback` help text and JSDoc** — Updated to reflect optional arguments and two usage modes.
 - **`fix.ts` multi-line output** — `Proposal:`, `Detail:`, and `Action:` lines in the repair workflow now split on `\n` and prefix each continuation line with the tree connector, so multi-line suggestions and tips no longer print flush-left.
+- **`diagnose.ts` multi-line suggestions** — `renderCheck` now splits `suggestion` on `\n` and aligns each continuation line under the `💡` prefix, consistent with the fix and doctor commands.
+- **`diagnose.ts` dependency-skip indicator** — When a check is skipped because of a failed upstream dependency, a dim `↳ blocked by a failed upstream check` line is shown beneath the skip message, making the cascade legible at a glance.
+- **`env.ts` multi-line suggestions** — Security risk `suggestion` fields in `renderSecurityRisks` now split on `\n` with proper connector-aligned continuation lines.
+- **`fix.ts` no-repair suggestion alignment** — Multi-line suggestions in the "no automated repair available" block now indent correctly.
+- **`doctor.ts` Recommendations plugin attribution** — Each recommendation item now shows a muted `[PluginName]` tag before the suggestion text, so it's clear which plugin each item belongs to when there are recommendations across multiple plugins.
+- **`history.ts` timestamp timezone** — `formatTimestamp` now appends a `UTC±HH:MM` offset to each timestamp, making history entries unambiguous across machines and timezones.
+- **`history.ts` empty-state copy** — The empty history message now explains what creates history entries, what they capture, and how to record the first one — instead of just "No history found."
+- **`interactive.ts` rollback menu** — The "Roll back a repair" interactive flow now offers two modes upfront: **Last session** (maps to `devdoctor rollback` with no args) and **Specific check** (plugin + check picker). The menu item description is updated to reflect both modes.
 - **Educational `detail` enriched on thin checks:**
   - Git `installation-check` — pass path now explains what Git is and why it's a prerequisite for the remaining checks.
   - Git `identity-check` — pass path now explains what the name/email is embedded into and why attribution matters.

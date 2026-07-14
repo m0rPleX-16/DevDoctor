@@ -254,7 +254,11 @@ async function runFix(
       console.log(`  ${theme.primary('┃')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
       console.log(`  ${theme.primary('│')}     ${theme.muted(check.message)}`);
       if (check.suggestion) {
-        console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
+        const suggLines = ('💡 ' + check.suggestion).split('\n');
+        console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')(suggLines[0])}`);
+        for (let i = 1; i < suggLines.length; i++) {
+          console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')(suggLines[i])}`);
+        }
       }
       console.log(`  ${theme.primary('│')}`);
     }

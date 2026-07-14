@@ -44,6 +44,10 @@ function renderCheck(check: DiagnosticCheck, verbose: boolean, isLast: boolean):
 
   console.log(`  ${treeLine} ${badge}  ${label}`);
   console.log(`  ${treeIndent} ${theme.muted(check.message)}`);
+  // #6: when a check was skipped due to a dependency, show a dim cascade indicator
+  if (check.status === 'skip' && check.message.toLowerCase().includes('depends on')) {
+    console.log(`  ${treeIndent} ${theme.muted('↳ blocked by a failed upstream check')}`);
+  }
 
   if (verbose || check.status !== 'pass') {
     if (check.detail) {
@@ -56,7 +60,11 @@ function renderCheck(check: DiagnosticCheck, verbose: boolean, isLast: boolean):
 
   if (check.suggestion && check.status !== 'pass') {
     console.log(`  ${treeIndent}`);
-    console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
+    const suggLines = ('💡 ' + check.suggestion).split('\n');
+    console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')(suggLines[0])}`);
+    for (let i = 1; i < suggLines.length; i++) {
+      console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')(suggLines[i])}`);
+    }
   }
 
   if (!isLast) {

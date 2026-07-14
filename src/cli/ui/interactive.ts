@@ -71,7 +71,7 @@ function buildMenuItems(pluginNames: string[]): MenuItem[] {
     {
       icon: '↩️ ',
       label: 'Roll back a repair',
-      description: 'rollback — undo the last automated repair for a plugin check',
+      description: 'rollback — undo the last session or a specific repair',
       args: ['rollback'],
     },
     {
@@ -453,14 +453,31 @@ const ROLLBACK_SUPPORTED_CHECKS: Record<string, string[]> = {
 
 /**
  * Gather plugin + check name + options for the `rollback` command.
- * Shows the known rollback-supported checks for the selected plugin
- * so the user doesn't have to guess or remember the check name.
+ * Offers session rollback (no args) as the first choice, then
+ * falls through to plugin/check picker for a targeted rollback.
  * Returns full argv, or null to cancel.
  */
 async function askRollbackOptions(
   pluginNames: string[],
   baseArgv: string[],
 ): Promise<string[] | null> {
+  // First ask: session rollback vs specific check
+  const mode = await askChoice('What would you like to roll back?', [
+    { key: '1', label: 'Last session   — undo all repairs from the last fix run', value: 'session' },
+    { key: '2', label: 'Specific check — undo one repair for a particular plugin', value: 'specific' },
+  ]);
+
+  if (!mode) return null;
+
+  if (mode === 'session') {
+    process.stdout.write('\n');
+    const autoConfirm = await askYesNo('Auto-confirm rollback without prompting? (--yes)');
+    const flags: string[] = [];
+    if (autoConfirm === true) flags.push('--yes');
+    return [...baseArgv, 'rollback', ...flags];
+  }
+
+  // Specific check path
   const plugin = await pickPlugin(pluginNames, 'roll back');
   if (!plugin) return null;
 
@@ -469,13 +486,11 @@ async function askRollbackOptions(
   let checkName: string | null;
 
   if (supportedChecks && supportedChecks.length > 0) {
-    // Show a guided picker using the known check names
     checkName = await askChoice(
       `Which check to roll back for ${plugin}?`,
       supportedChecks.map((c, i) => ({ key: String(i + 1), label: c, value: c })),
     );
   } else {
-    // Plugin not in the known list — fall back to free-form entry with a warning
     process.stdout.write(
       `\n  ${theme.muted(`Note: "${plugin}" has no known rollback-supported checks.`)}\n`,
     );

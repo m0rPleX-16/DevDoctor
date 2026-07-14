@@ -278,7 +278,7 @@ export function createDoctorCommand(
 
       // Item 4: include warn checks with suggestions, not just fail; show count in label
       const recommendations = diagnostics
-        .flatMap((r) => r.checks)
+        .flatMap((r) => r.checks.map((c) => ({ ...c, pluginName: r.pluginName, displayName: r.displayName })))
         .filter((c) => (c.status === 'fail' || c.status === 'warn') && c.suggestion);
 
       if (recommendations.length > 0) {
@@ -287,9 +287,8 @@ export function createDoctorCommand(
         console.log(connector());
         recommendations.forEach((c, i) => {
           const badge = statusBadge(c.status);
-          const prefix = `  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  `;
-          // Indent continuation lines to align under the first line of text.
-          // prefix without ANSI codes is roughly "  │  N. ● " = 11 visible chars.
+          const pluginTag = theme.muted(`[${c.displayName}] `);
+          const prefix = `  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${pluginTag}`;
           const continuation = `  ${theme.muted('│')}             `;
           const lines = c.suggestion!.split('\n');
           console.log(`${prefix}${chalk.hex('#A78BFA')(lines[0])}`);
