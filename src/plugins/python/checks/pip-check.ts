@@ -20,8 +20,11 @@ export async function checkPip(pythonCmd: string | null): Promise<DiagnosticChec
         status: 'pass',
         message: `pip ${version} is available (${cmd}).`,
         detail:
-          'pip is the standard Python package installer. It allows you to install ' +
-          'packages from PyPI (Python Package Index) and manage project dependencies.',
+          `pip v${version} is the standard Python package installer, available as the ` +
+          `"${cmd}" command. It downloads and installs packages from PyPI (Python Package Index), ` +
+          'the central repository for open-source Python libraries. pip also manages transitive ' +
+          'dependencies and records them in requirements.txt or pyproject.toml so your project ' +
+          'environment can be reproduced on any machine with `pip install -r requirements.txt`.',
         dependsOn: ['python-installation'],
       };
     }
@@ -38,7 +41,11 @@ export async function checkPip(pythonCmd: string | null): Promise<DiagnosticChec
         label: 'pip (Package Manager)',
         status: 'pass',
         message: `pip ${version} is available via ${pythonCmd} -m pip.`,
-        detail: 'pip is available via the Python module invocation rather than a standalone command.',
+        detail:
+          `pip v${version} is available through the Python module interface (${pythonCmd} -m pip) ` +
+          'rather than a standalone command on the PATH. This works correctly but means you need ' +
+          'to invoke pip through Python explicitly. Consider installing pip as a standalone command ' +
+          'with: python3 -m ensurepip --upgrade',
         dependsOn: ['python-installation'],
       };
     }

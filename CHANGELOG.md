@@ -7,6 +7,47 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.4] — 2026-07-14
+
+### Added
+
+- **`CheckRunner` (`src/core/engine/check-runner.ts`)** — New dependency-aware task runner that replaces the post-hoc `applyDependencySkips()` approach. `runDiagnosticTasks()` accepts a list of `DiagnosticTask` objects and executes them in dependency order: tasks whose upstream dependencies pass run concurrently; tasks with a failed dependency are marked `skip` immediately without invoking their `run()` function. Circular/unresolvable graphs are detected and remaining tasks are gracefully skipped. (ADR-0019)
+- **`DiagnosticTask` interface** (`src/core/types/diagnostic.ts`) — New type that bundles a check's `name`, human-readable `label`, optional `dependsOn[]`, and `run()` function. Used by `runDiagnosticTasks()` and all built-in plugins.
+- **`SnapshotManager` (`src/core/engine/snapshot-manager.ts`)** — Persists a record of all successful rollback-supported repairs to `~/.devdoctor/snapshots/latest.json`. Provides `recordRepair()`, `getLatestSnapshot()`, and `clearSnapshot()`. (ADR-0019)
+- **`RepairEngine.rollbackAll()`** — Reads the latest snapshot and rolls back all recorded repairs in reverse order, then clears the snapshot. Used by `devdoctor rollback` with no arguments.
+- **`devdoctor rollback` (no-arg mode)** — Running `devdoctor rollback` without arguments now rolls back the entire last repair session using the snapshot. The existing `devdoctor rollback <plugin> <check>` single-check path is unchanged.
+- **`runElevatedCommand()` (`src/infra/os/command-runner.ts`)** — New function that runs a command with elevated privileges. On Windows, uses `PowerShell Start-Process -Verb RunAs` (triggers UAC). On Unix, prepends `sudo`.
+- **Git `git-crlf` check** (`src/plugins/git/checks/crlf-check.ts`) — Warns when `core.autocrlf` is not configured or is inappropriate for the current platform (Windows: `true`; Unix: `input`/`false`). Teaches why CRLF vs LF matters across operating systems, with platform-specific suggestions on all paths.
+- **Git `git-credential-helper` check** (`src/plugins/git/checks/credential-helper-check.ts`) — Warns when no global credential helper is configured. Recognises well-known helpers by name (GCM, osxkeychain, libsecret, wincred), warns specifically when the insecure plaintext `store` helper is in use, and explains what credential helpers do on all paths.
+- **`Plugin.projectMarkers` field** (`src/core/types/plugin.ts`) — New optional field on the `Plugin` interface. Plugins declare an array of filenames/directories that signal they are relevant to the current working directory (e.g. `package.json` for Node, `.git` for Git, `requirements.txt` for Python).
+- **`src/infra/system/project-detector.ts`** — New `detectProjectContext(plugins, cwd)` utility that scans `process.cwd()` for each plugin's declared markers and returns which plugins are relevant to the current project, along with which marker files triggered the match.
+- **ADR-0019** — Check runner, session rollback, auto-elevation, and new git checks documented.
+
+### Changed
+
+- **All built-in plugins now use `runDiagnosticTasks()`** — Node, MySQL, Git, Redis, and Python plugins have all migrated to the new `check-runner`. Dependency resolution now happens *before* a check's `run()` is invoked, not as a post-hoc replacement. This is a correctness improvement: checks that depend on data produced by upstream checks (e.g. `mysql-port` needing the port number from `mysql-config`) can safely rely on that data being set.
+- **`devdoctor doctor` — context-aware Plugin Diagnostics section** — When project markers are detected in the current directory, the Plugin Diagnostics section is split into two groups: **Detected in this project** (green `· detected` tag + matched filenames) and **Other plugins** (muted `· not in project` tag). Falls back to the previous flat list when no markers match, so behaviour is unchanged in bare directories.
+- **MySQL `repair()` and `rollback()` — auto-elevation** — Service start/stop and process kill operations now automatically retry with `runElevatedCommand()` when they receive a `System error 5` / `Access is denied` response, instead of returning a "run as administrator" error message.
+- **`RepairEngine`** — Injects `SnapshotManager` and records each successful repair (where `rollbackSupported: true`) to the snapshot after `plugin.repair()` returns.
+- **`devdoctor rollback` help text and JSDoc** — Updated to reflect optional arguments and two usage modes.
+- **`fix.ts` multi-line output** — `Proposal:`, `Detail:`, and `Action:` lines in the repair workflow now split on `\n` and prefix each continuation line with the tree connector, so multi-line suggestions and tips no longer print flush-left.
+- **Educational `detail` enriched on thin checks:**
+  - Git `installation-check` — pass path now explains what Git is and why it's a prerequisite for the remaining checks.
+  - Git `identity-check` — pass path now explains what the name/email is embedded into and why attribution matters.
+  - Git `crlf-check` — full CRLF/LF education on all paths including a shared explanation block.
+  - Git `credential-helper-check` — explains what credential helpers are, why they exist, and distinguishes between secure and insecure helpers.
+  - Python `installation-check` — pass path now mentions relevant version milestones (3.8, 3.10, 3.11).
+  - Python `pip-check` — pass paths now explain PyPI, `requirements.txt` reproducibility, and the significance of the module-invocation fallback.
+
+### Fixed
+
+- **Python plugin inconsistency** — Python was the only plugin still using the old `applyDependencySkips()` post-hoc pattern and running all checks eagerly before resolving skips. It now uses `runDiagnosticTasks()` in line with all other plugins.
+- **MySQL dynamic `import()` in `diagnose()`** — `runDiagnosticTasks` was imported with a dynamic `await import()` inside the method body. It is now a static top-level import, consistent with all other plugins.
+- **MySQL untyped task array** — The `tasks` array in `MysqlPlugin.diagnose()` was inferred as `{name: string; ...}[]` rather than `DiagnosticTask[]`, meaning TypeScript could not catch shape mismatches. Now explicitly typed.
+- **Redis plugin inconsistency** — Redis was the last built-in plugin still using `applyDependencySkips()`. It now uses `runDiagnosticTasks()`, completing the migration across all five plugins.
+
+---
+
 ## [0.4.3] — 2026-07-13
 
 ### Added
@@ -236,6 +277,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.4]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.0...v0.4.1

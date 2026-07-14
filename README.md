@@ -4,7 +4,7 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.3**
+> Current version: **0.4.4**
 
 ---
 
@@ -13,7 +13,7 @@ Dev Doctor isn't just another diagnostic tool — it **teaches you** about your 
 - **Diagnose** — Run health checks on Node.js, MySQL, Git, Redis, and Python environments (or custom plugins)
 - **Explain** — Detailed root causes and educational explanations for every check
 - **Repair** — Safe, confirmation-prompted automatic repairs with rollback support and state transition diff
-- **Rollback** — Explicitly undo a prior repair with `devdoctor rollback <plugin> <check>`
+- **Rollback** — Explicitly undo a prior repair with `devdoctor rollback` (last session) or `devdoctor rollback <plugin> <check>` (single check)
 - **History** — Timeline of past health check scores with trend arrows via `devdoctor history`
 - **CI-Ready** — `--yes` to auto-confirm repairs and `--dry-run` to preview without changes
 - **Audit Log** — Every repair action is recorded in `~/.devdoctor/history.json`
@@ -84,8 +84,11 @@ npx tsx src/cli/index.ts history
 # Safely repair issues detected by a plugin
 npx tsx src/cli/index.ts fix mysql
 
-# Roll back the last repair on a check
+# Roll back the last repair on a specific check
 npx tsx src/cli/index.ts rollback mysql mysql-service
+
+# Roll back all repairs from the last session
+npx tsx src/cli/index.ts rollback
 
 # Manage configurations (show resolved settings, initialize local config, print paths)
 npx tsx src/cli/index.ts config show
@@ -147,7 +150,7 @@ Options:
 | :---     | :---                                                                                 |
 | `node`   | Node.js installation, npm availability, PATH configuration                           |
 | `mysql`  | MySQL/MariaDB service, TCP port, config, error log checks                            |
-| `git`    | Git installation, identity config, default branch, SSH key checks                    |
+| `git`    | Git installation, identity config, default branch, SSH key, line endings, credential helper |
 | `redis`  | Redis installation, service, port 6379, PING connectivity, memory usage              |
 | `python` | Python 3 installation, pip, virtual environment, PATH ordering conflict detection    |
 
@@ -211,9 +214,14 @@ When `--yes` is not provided and stdin is not a TTY (e.g. a CI pipeline), the co
 
 Every repair, verification, and rollback action is recorded in `~/.devdoctor/history.json` (NDJSON format) for auditing.
 
-### `devdoctor rollback <plugin> <check>`
+### `devdoctor rollback [plugin] [check]`
 
-Explicitly undo the last automated repair for a specific check. Only available for checks whose plugin implements rollback support.
+Undo automated repairs. Two modes:
+
+- **No arguments** — rolls back all repairs from the last repair session (reads `~/.devdoctor/snapshots/latest.json`).
+- **With arguments** — rolls back a single specific check for the named plugin.
+
+Only available for checks whose plugin implements rollback support.
 
 | Plugin | Check | What rollback does |
 |---|---|---|
@@ -228,7 +236,9 @@ Options:
 ```
 
 ```bash
-devdoctor rollback mysql mysql-service
+devdoctor rollback                          # Undo all repairs from last session
+devdoctor rollback --yes                    # Same, auto-confirmed
+devdoctor rollback mysql mysql-service      # Undo a specific repair
 devdoctor rollback node node-permissions
 devdoctor rollback python python-venv --yes
 ```
@@ -390,6 +400,8 @@ src/
 │   └── engine/
 │       ├── diagnostic-engine.ts  # Orchestrates plugin diagnostics (concurrent, per-plugin timeout)
 │       ├── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
+│       ├── check-runner.ts       # Dependency-aware task runner (runDiagnosticTasks)
+│       ├── snapshot-manager.ts   # Persists repair session snapshots for session rollback
 │       └── status-utils.ts       # deriveOverallStatus + applyDependencySkips
 │
 ├── plugins/                 # Plugin Layer
@@ -579,6 +591,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | [0016](docs/adr/0016-diagnostic-history.md)       | Diagnostic history and health score trending                |
 | [0017](docs/adr/0017-dependency-aware-checks.md)  | Dependency-aware check ordering with `dependsOn`            |
 | [0018](docs/adr/0018-redis-python-plugins.md)     | Redis and Python plugin decisions                           |
+| [0019](docs/adr/0019-check-runner-and-session-rollback.md) | Dependency-aware check runner, session rollback, auto-elevation |
 
 ---
 
@@ -607,6 +620,7 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 | 19    | Explicit Rollback Command                | ✅ Complete  |
 | 20    | Snapshot Tests for Renderer Output       | ✅ Complete  |
 | 21    | Node + Python Repair & Rollback          | ✅ Complete  |
+| 22    | Check Runner + Session Rollback          | ✅ Complete  |
 
 ---
 

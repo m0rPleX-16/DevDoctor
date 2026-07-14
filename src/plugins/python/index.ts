@@ -20,7 +20,9 @@ import path from 'node:path';
 import type { Plugin } from '../../core/types/plugin.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
-import { deriveOverallStatus, applyDependencySkips } from '../../core/engine/status-utils.js';
+import { deriveOverallStatus } from '../../core/engine/status-utils.js';
+import { runDiagnosticTasks } from '../../core/engine/check-runner.js';
+import type { DiagnosticTask } from '../../core/types/diagnostic.js';
 import { checkPythonInstallation } from './checks/installation-check.js';
 import { checkPip } from './checks/pip-check.js';
 import { checkPythonVenv } from './checks/venv-check.js';
@@ -31,28 +33,46 @@ export class PythonPlugin implements Plugin {
   readonly name = 'python';
   readonly displayName = 'Python';
   readonly description = 'Diagnoses your Python development environment.';
+  readonly projectMarkers = [
+    'requirements.txt', 'pyproject.toml', 'setup.py', 'setup.cfg',
+    'Pipfile', '.python-version', '.venv', 'venv', 'conda.yaml', 'environment.yml',
+  ];
 
   async diagnose(): Promise<DiagnosticResult> {
     const startTime = performance.now();
 
-    // Step 1: resolve the Python executable — downstream checks need the command name
+    // Step 1: resolve the Python executable first — downstream checks need the command name.
+    // We run this eagerly outside the task runner so the resolved command is available
+    // as a closure variable for dependent tasks.
     const installInfo = await checkPythonInstallation();
 
-    // Steps 2-4: run concurrently — all declare dependsOn python-installation
-    const [pipCheck, venvCheck, pathCheck] = await Promise.all([
-      checkPip(installInfo.command),
-      checkPythonVenv(),
-      checkPythonPath(installInfo.command),
-    ]);
+    const tasks: DiagnosticTask[] = [
+      {
+        name: 'python-installation',
+        label: 'Python Installation',
+        run: async () => installInfo.check,
+      },
+      {
+        name: 'python-pip',
+        label: 'pip',
+        dependsOn: ['python-installation'],
+        run: () => checkPip(installInfo.command),
+      },
+      {
+        name: 'python-venv',
+        label: 'Virtual Environment',
+        dependsOn: ['python-installation'],
+        run: checkPythonVenv,
+      },
+      {
+        name: 'python-path',
+        label: 'Python PATH',
+        dependsOn: ['python-installation'],
+        run: () => checkPythonPath(installInfo.command),
+      },
+    ];
 
-    // Apply dependency-aware skip resolution
-    const checks = applyDependencySkips([
-      installInfo.check,
-      pipCheck,
-      venvCheck,
-      pathCheck,
-    ]);
-
+    const checks = await runDiagnosticTasks(tasks);
     const durationMs = Math.round(performance.now() - startTime);
 
     return {

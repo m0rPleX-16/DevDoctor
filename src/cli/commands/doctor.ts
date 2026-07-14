@@ -19,6 +19,7 @@ import type { DetectedTool, HealthStatus, DoctorResult } from '../../core/types/
 import type { ReportFormat, ResolvedConfig } from '../../core/types/config.js';
 import type { IHistoryStore } from '../../infra/audit/history-store.js';
 import { detectTools } from '../../infra/system/tool-detector.js';
+import { detectProjectContext } from '../../infra/system/project-detector.js';
 import { showCompactBanner } from '../ui/banner.js';
 import { createSpinner } from '../ui/spinner.js';
 import { createRenderer, writeReport } from '../reporting/renderer-factory.js';
@@ -78,6 +79,7 @@ export function createDoctorCommand(
   engine: DiagnosticEngine,
   config?: ResolvedConfig,
   historyStore?: IHistoryStore,
+  registry?: import('../../plugins/plugin-registry.js').PluginRegistry,
 ): Command {
   return new Command('doctor')
     .description('Run a full health check across all plugins and tools.')
@@ -177,22 +179,58 @@ export function createDoctorCommand(
         console.log();
         console.log(sectionHeader('Plugin Diagnostics', '🔍'));
         console.log(connector());
-        for (const result of diagnostics) {
+
+        // ── Project-context grouping ──────────────────────────────
+        // Detect which plugins have markers present in the current directory.
+        // If the registry was passed, group results into detected vs other.
+        const allPlugins = registry?.list() ?? [];
+        const projectCtx = allPlugins.length > 0
+          ? detectProjectContext(allPlugins)
+          : { detectedPlugins: new Set<string>(), matchedMarkers: {} };
+
+        const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
+
+        // Partition results: detected in project vs not detected
+        const detected = diagnostics.filter((r) => projectCtx.detectedPlugins.has(r.pluginName));
+        const others = diagnostics.filter((r) => !projectCtx.detectedPlugins.has(r.pluginName));
+
+        const renderPluginResult = (result: DiagnosticResult, isDetected: boolean) => {
           const badge = statusBadge(result.overallStatus);
           const name = statusColor(result.displayName, result.overallStatus);
+          const relevanceTag = hasAnyDetected
+            ? (isDetected ? chalk.hex('#86efac')(' · detected') : theme.muted(' · not in project'))
+            : '';
+          const markers = isDetected && projectCtx.matchedMarkers[result.pluginName]
+            ? theme.muted(` (${projectCtx.matchedMarkers[result.pluginName].join(', ')})`)
+            : '';
           console.log(
-            `  ${theme.muted('│')}  ${badge}  ${name}  ${theme.muted('·')}  ` +
-            `${theme.muted(`${result.checks.length} checks`)}  ${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
+            `  ${theme.muted('│')}  ${badge}  ${name}${relevanceTag}${markers}  ` +
+            `${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ` +
+            `${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
           );
           if (result.overallStatus !== 'pass') {
             for (const check of result.checks) {
               if (check.status !== 'pass') {
                 console.log(
-                  `  ${theme.muted('│')}     ${statusBadge(check.status)}  ${theme.muted(check.label)}: ${theme.muted(check.message)}`,
+                  `  ${theme.muted('│')}     ${statusBadge(check.status)}  ` +
+                  `${theme.muted(check.label)}: ${theme.muted(check.message)}`,
                 );
               }
             }
           }
+        };
+
+        if (hasAnyDetected && detected.length > 0) {
+          console.log(`  ${theme.muted('│')}  ${theme.muted('── Detected in this project ──')}`);
+          for (const result of detected) renderPluginResult(result, true);
+          if (others.length > 0) {
+            console.log(`  ${theme.muted('│')}`);
+            console.log(`  ${theme.muted('│')}  ${theme.muted('── Other plugins ──')}`);
+            for (const result of others) renderPluginResult(result, false);
+          }
+        } else {
+          // No project context — render flat as before
+          for (const result of diagnostics) renderPluginResult(result, false);
         }
       } else {
         console.log();

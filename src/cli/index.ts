@@ -143,7 +143,7 @@ function buildProgram(
   program.addCommand(createDiagnoseCommand(engine, config));
   program.addCommand(createInfoCommand());
   program.addCommand(createEnvCommand());
-  program.addCommand(createDoctorCommand(engine, config, historyStore));
+  program.addCommand(createDoctorCommand(engine, config, historyStore, registry));
   program.addCommand(createFixCommand(registry, engine, repairEngine));
   program.addCommand(createCompletionCommand('devdoctor'));
   program.addCommand(createHistoryCommand(historyStore));

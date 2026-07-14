@@ -90,3 +90,22 @@ export interface DiagnosticResult {
   /** Overall summary — derived from the worst status among checks */
   overallStatus: CheckStatus;
 }
+
+/**
+ * Defines a check to be executed by the CheckRunner.
+ * Separating the definition from the result allows the engine to
+ * build a dependency graph and prune skips before execution.
+ */
+export interface DiagnosticTask {
+  /** The unique name of this check (must match the resulting DiagnosticCheck.name) */
+  name: string;
+
+  /** Human-readable label for the check (used for skip messages) */
+  label: string;
+
+  /** Names of checks that must pass before this check can run */
+  dependsOn?: string[];
+
+  /** The function that executes the check */
+  run: () => Promise<DiagnosticCheck>;
+}

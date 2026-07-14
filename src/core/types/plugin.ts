@@ -33,6 +33,22 @@ export interface Plugin {
   description: string;
 
   /**
+   * File or directory names that indicate this plugin is relevant to the
+   * current working directory. Used by `devdoctor doctor` to visually
+   * distinguish plugins that are likely relevant to the project from those
+   * that are not.
+   *
+   * Each entry is a filename or directory name checked for existence directly
+   * inside process.cwd(). Any match marks the plugin as "detected".
+   *
+   * Examples:
+   *   ['package.json', '.nvmrc', '.node-version']  → node
+   *   ['.git']                                      → git
+   *   ['requirements.txt', 'pyproject.toml']        → python
+   */
+  projectMarkers?: string[];
+
+  /**
    * Run all diagnostic checks for this technology.
    */
   diagnose(): Promise<DiagnosticResult>;
