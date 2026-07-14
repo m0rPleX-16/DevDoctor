@@ -208,9 +208,14 @@ export function createDoctorCommand(
             `${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ` +
             `${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
           );
+          // For detected plugins, show failing/warning check details inline.
+          // For "other" plugins, skip is noise — only show actual fail/warn, not skips.
           if (result.overallStatus !== 'pass') {
             for (const check of result.checks) {
-              if (check.status !== 'pass') {
+              const showInline = isDetected
+                ? check.status !== 'pass'
+                : check.status === 'fail' || check.status === 'warn';
+              if (showInline) {
                 console.log(
                   `  ${theme.muted('│')}     ${statusBadge(check.status)}  ` +
                   `${theme.muted(check.label)}: ${theme.muted(check.message)}`,
@@ -282,7 +287,15 @@ export function createDoctorCommand(
         console.log(connector());
         recommendations.forEach((c, i) => {
           const badge = statusBadge(c.status);
-          console.log(`  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${chalk.hex('#A78BFA')(c.suggestion!)}`);
+          const prefix = `  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  `;
+          // Indent continuation lines to align under the first line of text.
+          // prefix without ANSI codes is roughly "  │  N. ● " = 11 visible chars.
+          const continuation = `  ${theme.muted('│')}             `;
+          const lines = c.suggestion!.split('\n');
+          console.log(`${prefix}${chalk.hex('#A78BFA')(lines[0])}`);
+          for (let l = 1; l < lines.length; l++) {
+            console.log(`${continuation}${chalk.hex('#A78BFA')(lines[l])}`);
+          }
         });
       }
 
