@@ -10,6 +10,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { collectSystemInfo, formatBytes, formatUptime } from '../../infra/system/system-info-collector.js';
+import { detectProjectContext } from '../../infra/system/project-detector.js';
 import { createSpinner } from '../ui/spinner.js';
 import { showCompactBanner } from '../ui/banner.js';
 import {
@@ -31,12 +32,20 @@ interface InfoOptions {
  *
  * @returns The configured Commander command
  */
-export function createInfoCommand(): Command {
+export function createInfoCommand(
+  registry?: import('../../plugins/plugin-registry.js').PluginRegistry,
+): Command {
   return new Command('info')
     .description('Display system and environment information.')
     .option('-f, --format <format>', 'Output format: terminal (default), json', 'terminal')
     .action(async (options: InfoOptions) => {
       const format = options.format ?? 'terminal';
+
+      if (format !== 'terminal' && format !== 'json') {
+        console.error(`  ${theme.error(`✖ Unknown format: "${format}". Use terminal or json.`)}`);
+        process.exitCode = 1;
+        return;
+      }
 
       if (format === 'json') {
         // No banner or spinner for machine-readable output
@@ -112,6 +121,33 @@ export function createInfoCommand(): Command {
             const badge = statusBadge('skip');
             console.log(`  ${theme.muted('│')}  ${badge}  ${theme.muted(tool.name)}  ${theme.muted('not found')}`);
           }
+        }
+      }
+
+      // Project Context section — only shown when markers are detected
+      if (registry) {
+        const allPlugins = registry.list();
+        const projectCtx = detectProjectContext(allPlugins);
+
+        if (projectCtx.detectedPlugins.size > 0) {
+          console.log();
+          console.log(sectionHeader('Project Context', theme.accent('◈')));
+          console.log(connector());
+          console.log(`  ${theme.muted('│')}  ${theme.muted(`Detected in ${chalk.white(process.cwd())}`)}`);
+          console.log(connector());
+          for (const [pluginName, markers] of Object.entries(projectCtx.matchedMarkers)) {
+            const plugin = allPlugins.find((p) => p.name === pluginName);
+            const displayName = plugin?.displayName ?? pluginName;
+            console.log(
+              `  ${theme.muted('│')}  ${statusBadge('pass')}  ${chalk.white(displayName)}` +
+              `  ${theme.muted(`(${markers.join(', ')})`)}`,
+            );
+          }
+          console.log(connector());
+          console.log(
+            `  ${theme.muted('│')}  ${theme.muted('Run')} ${chalk.white('devdoctor doctor')} ` +
+            `${theme.muted('to diagnose all detected plugins.')}`,
+          );
         }
       }
 

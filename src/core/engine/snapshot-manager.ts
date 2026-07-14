@@ -23,8 +23,9 @@ export interface SnapshotManifest {
 export class SnapshotManager {
   private snapshotPath: string;
 
-  constructor() {
-    this.snapshotPath = path.join(os.homedir(), '.devdoctor', 'snapshots', 'latest.json');
+  constructor(snapshotDir?: string) {
+    const dir = snapshotDir ?? path.join(os.homedir(), '.devdoctor', 'snapshots');
+    this.snapshotPath = path.join(dir, 'latest.json');
   }
 
   /**

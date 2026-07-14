@@ -24,6 +24,16 @@ export function testPluginContract(plugin: Plugin, timeout = 10_000) {
       expect(plugin.description.length).toBeGreaterThan(0);
     });
 
+    it('has valid projectMarkers when declared', () => {
+      if (plugin.projectMarkers === undefined) return; // optional field — absence is fine
+      expect(Array.isArray(plugin.projectMarkers)).toBe(true);
+      expect(plugin.projectMarkers.length).toBeGreaterThan(0);
+      for (const marker of plugin.projectMarkers) {
+        expect(typeof marker).toBe('string');
+        expect(marker.trim().length).toBeGreaterThan(0);
+      }
+    });
+
     it('returns a valid DiagnosticResult from diagnose()', async () => {
       const result = await plugin.diagnose();
 

@@ -32,6 +32,10 @@ export async function checkRedisInstallation(): Promise<DiagnosticCheck> {
     label: 'Redis Installation',
     status: 'pass',
     message: `Redis is installed (v${version}).`,
-    detail: `Redis server version ${version} was detected on the system PATH.`,
+    detail:
+      `Redis server v${version} is available on the system PATH. Redis uses a single-threaded ` +
+      'event loop to handle commands, which is why version matters — Redis 6.0+ introduced ' +
+      'TLS support and ACL-based authentication, and Redis 7.0+ added multi-part AOF persistence. ' +
+      'Older versions may lack features expected by modern client libraries.',
   };
 }

@@ -142,7 +142,7 @@ function buildProgram(
 
   // Pass resolved config into commands that need format/output options
   program.addCommand(createDiagnoseCommand(engine, config));
-  program.addCommand(createInfoCommand());
+  program.addCommand(createInfoCommand(registry));
   program.addCommand(createEnvCommand());
   program.addCommand(createDoctorCommand(engine, config, historyStore, registry));
   program.addCommand(createFixCommand(registry, engine, repairEngine));
