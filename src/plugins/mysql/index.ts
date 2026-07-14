@@ -4,6 +4,8 @@ import type { Plugin } from '../../core/types/plugin.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
 import { deriveOverallStatus } from '../../core/engine/status-utils.js';
+import { runDiagnosticTasks } from '../../core/engine/check-runner.js';
+import type { DiagnosticTask } from '../../core/types/diagnostic.js';
 import type { ConfigCheckResult } from './checks/config-check.js';
 import type { XamppProcessCheckResult } from './checks/xampp-process-check.js';
 import { checkMysqlConfig } from './checks/config-check.js';
@@ -13,7 +15,7 @@ import { checkMysqlLog } from './checks/log-check.js';
 import { checkMysqlPermissions } from './checks/permissions-check.js';
 import { checkXamppProcess } from './checks/xampp-process-check.js';
 import { checkService } from '../../infra/system/service-checker.js';
-import { runCommand } from '../../infra/os/command-runner.js';
+import { runCommand, runElevatedCommand } from '../../infra/os/command-runner.js';
 import { getPortOwner } from '../../infra/system/port-checker.js';
 import { spawnDetached, findRunningProcess, waitForPort } from '../../infra/os/process-manager.js';
 import {
@@ -85,6 +87,7 @@ export class MysqlPlugin implements Plugin {
   readonly name = 'mysql';
   readonly displayName = 'MySQL';
   readonly description = 'Diagnoses your MySQL local database environment.';
+  readonly projectMarkers = ['docker-compose.yml', 'docker-compose.yaml', '.env', 'my.cnf', 'my.ini'];
 
   /**
    * Cached results from the most recent diagnose() call.
@@ -96,28 +99,63 @@ export class MysqlPlugin implements Plugin {
   async diagnose(): Promise<DiagnosticResult> {
     const startTime = performance.now();
 
-    // Config must run first — downstream checks use port and log path
-    const configResult = await checkMysqlConfig();
-    this.lastConfig = configResult;
+    let port = 3306;
+    let logErrorPath: string | undefined = undefined;
 
-    const [serviceCheck, portCheck, logCheck, permissionsCheck, xamppResult] =
-      await Promise.all([
-        checkMysqlService(),
-        checkMysqlPort(configResult.port),
-        checkMysqlLog(configResult.logErrorPath),
-        checkMysqlPermissions(),
-        checkXamppProcess(),
-      ]);
+    const tasks: DiagnosticTask[] = [
+      {
+        name: 'mysql-config',
+        label: 'MySQL Configuration',
+        run: async () => {
+          const res = await checkMysqlConfig();
+          this.lastConfig = res;
+          port = res.port;
+          logErrorPath = res.logErrorPath;
+          return res.check;
+        },
+      },
+      {
+        name: 'mysql-service',
+        label: 'MySQL Service',
+        run: checkMysqlService,
+      },
+      {
+        name: 'mysql-port',
+        label: 'MySQL Port',
+        dependsOn: ['mysql-config'],
+        run: () => checkMysqlPort(port),
+      },
+      {
+        name: 'mysql-log',
+        label: 'MySQL Error Log',
+        dependsOn: ['mysql-config'],
+        run: () => checkMysqlLog(logErrorPath),
+      },
+      {
+        name: 'mysql-permissions',
+        label: 'MySQL Permissions',
+        run: checkMysqlPermissions,
+      },
+      {
+        name: 'xampp-process',
+        label: 'XAMPP Process',
+        run: async () => {
+          const res = await checkXamppProcess();
+          this.lastXamppCheck = res;
+          return res.check;
+        },
+      },
+    ];
 
-    this.lastXamppCheck = xamppResult;
+    let checks = await runDiagnosticTasks(tasks);
 
     // Only include the XAMPP process check when no service was found.
     // When a service is present, the service check already covers process status
     // and showing both would be redundant and confusing.
-    const checks =
-      serviceCheck.status === 'warn' && serviceCheck.message.includes('No registered')
-        ? [configResult.check, serviceCheck, portCheck, logCheck, permissionsCheck, xamppResult.check]
-        : [configResult.check, serviceCheck, portCheck, logCheck, permissionsCheck];
+    const serviceCheck = checks.find((c) => c.name === 'mysql-service');
+    if (serviceCheck && !(serviceCheck.status === 'warn' && serviceCheck.message.includes('No registered'))) {
+      checks = checks.filter((c) => c.name !== 'xampp-process');
+    }
 
     const durationMs = Math.round(performance.now() - startTime);
 
@@ -146,9 +184,21 @@ export class MysqlPlugin implements Plugin {
         };
       }
 
-      const startResult = isWindows
+      let startResult = isWindows
         ? await runCommand('net', ['start', serviceName])
         : await runSystemctl('start', serviceName);  // ADR-0009: elevation-aware
+
+      const needElevation =
+        !startResult.success &&
+        (startResult.stderr.includes('System error 5') ||
+         startResult.exitCode === 5 ||
+         startResult.stderr.includes('Elevation required'));
+
+      if (needElevation) {
+        startResult = isWindows
+          ? await runElevatedCommand('net', ['start', serviceName])
+          : await runElevatedCommand('systemctl', ['start', serviceName]);
+      }
 
       if (startResult.success) {
         return {
@@ -160,20 +210,11 @@ export class MysqlPlugin implements Plugin {
         };
       }
 
-      const needElevation =
-        startResult.stderr.includes('System error 5') ||
-        startResult.exitCode === 5 ||
-        startResult.stderr.includes('Elevation required');
-
       return {
         checkName,
         success: false,
         message: `Failed to start MySQL service "${serviceName}".`,
-        detail: needElevation
-          ? isWindows
-            ? 'Please run the terminal as Administrator and try again.'
-            : 'Re-run with sudo or as root: sudo devdoctor fix mysql'
-          : startResult.stderr,
+        detail: startResult.stderr || 'Action cancelled or access denied.',
         rollbackSupported: false,
       };
     }
@@ -385,9 +426,15 @@ export class MysqlPlugin implements Plugin {
         };
       }
 
-      const stopResult = isWindows
+      let stopResult = isWindows
         ? await runCommand('net', ['stop', serviceName])
         : await runSystemctl('stop', serviceName); // ADR-0009: elevation-aware
+
+      if (!stopResult.success && (stopResult.stderr.includes('System error 5') || stopResult.exitCode === 5)) {
+        stopResult = isWindows
+          ? await runElevatedCommand('net', ['stop', serviceName])
+          : await runElevatedCommand('systemctl', ['stop', serviceName]);
+      }
 
       return stopResult.success
         ? {
@@ -421,9 +468,15 @@ export class MysqlPlugin implements Plugin {
 
       // Kill the most recently spawned PID (last in list)
       const pid = info.pids[info.pids.length - 1];
-      const killResult = isWindows
+      let killResult = isWindows
         ? await runCommand('taskkill', ['/f', '/pid', String(pid)])
         : await runCommand('kill', ['-9', String(pid)]);
+
+      if (!killResult.success && killResult.stderr.includes('Access is denied')) {
+        killResult = isWindows
+          ? await runElevatedCommand('taskkill', ['/f', '/pid', String(pid)])
+          : await runElevatedCommand('kill', ['-9', String(pid)]);
+      }
 
       return killResult.success
         ? {

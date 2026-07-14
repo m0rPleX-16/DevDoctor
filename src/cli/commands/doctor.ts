@@ -19,6 +19,7 @@ import type { DetectedTool, HealthStatus, DoctorResult } from '../../core/types/
 import type { ReportFormat, ResolvedConfig } from '../../core/types/config.js';
 import type { IHistoryStore } from '../../infra/audit/history-store.js';
 import { detectTools } from '../../infra/system/tool-detector.js';
+import { detectProjectContext } from '../../infra/system/project-detector.js';
 import { showCompactBanner } from '../ui/banner.js';
 import { createSpinner } from '../ui/spinner.js';
 import { createRenderer, writeReport } from '../reporting/renderer-factory.js';
@@ -78,6 +79,7 @@ export function createDoctorCommand(
   engine: DiagnosticEngine,
   config?: ResolvedConfig,
   historyStore?: IHistoryStore,
+  registry?: import('../../plugins/plugin-registry.js').PluginRegistry,
 ): Command {
   return new Command('doctor')
     .description('Run a full health check across all plugins and tools.')
@@ -177,22 +179,63 @@ export function createDoctorCommand(
         console.log();
         console.log(sectionHeader('Plugin Diagnostics', '🔍'));
         console.log(connector());
-        for (const result of diagnostics) {
+
+        // ── Project-context grouping ──────────────────────────────
+        // Detect which plugins have markers present in the current directory.
+        // If the registry was passed, group results into detected vs other.
+        const allPlugins = registry?.list() ?? [];
+        const projectCtx = allPlugins.length > 0
+          ? detectProjectContext(allPlugins)
+          : { detectedPlugins: new Set<string>(), matchedMarkers: {} };
+
+        const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
+
+        // Partition results: detected in project vs not detected
+        const detected = diagnostics.filter((r) => projectCtx.detectedPlugins.has(r.pluginName));
+        const others = diagnostics.filter((r) => !projectCtx.detectedPlugins.has(r.pluginName));
+
+        const renderPluginResult = (result: DiagnosticResult, isDetected: boolean) => {
           const badge = statusBadge(result.overallStatus);
           const name = statusColor(result.displayName, result.overallStatus);
+          const relevanceTag = hasAnyDetected
+            ? (isDetected ? chalk.hex('#86efac')(' · detected') : theme.muted(' · not in project'))
+            : '';
+          const markers = isDetected && projectCtx.matchedMarkers[result.pluginName]
+            ? theme.muted(` (${projectCtx.matchedMarkers[result.pluginName].join(', ')})`)
+            : '';
           console.log(
-            `  ${theme.muted('│')}  ${badge}  ${name}  ${theme.muted('·')}  ` +
-            `${theme.muted(`${result.checks.length} checks`)}  ${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
+            `  ${theme.muted('│')}  ${badge}  ${name}${relevanceTag}${markers}  ` +
+            `${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ` +
+            `${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
           );
+          // For detected plugins, show failing/warning check details inline.
+          // For "other" plugins, skip is noise — only show actual fail/warn, not skips.
           if (result.overallStatus !== 'pass') {
             for (const check of result.checks) {
-              if (check.status !== 'pass') {
+              const showInline = isDetected
+                ? check.status !== 'pass'
+                : check.status === 'fail' || check.status === 'warn';
+              if (showInline) {
                 console.log(
-                  `  ${theme.muted('│')}     ${statusBadge(check.status)}  ${theme.muted(check.label)}: ${theme.muted(check.message)}`,
+                  `  ${theme.muted('│')}     ${statusBadge(check.status)}  ` +
+                  `${theme.muted(check.label)}: ${theme.muted(check.message)}`,
                 );
               }
             }
           }
+        };
+
+        if (hasAnyDetected && detected.length > 0) {
+          console.log(`  ${theme.muted('│')}  ${theme.muted('── Detected in this project ──')}`);
+          for (const result of detected) renderPluginResult(result, true);
+          if (others.length > 0) {
+            console.log(`  ${theme.muted('│')}`);
+            console.log(`  ${theme.muted('│')}  ${theme.muted('── Other plugins ──')}`);
+            for (const result of others) renderPluginResult(result, false);
+          }
+        } else {
+          // No project context — render flat as before
+          for (const result of diagnostics) renderPluginResult(result, false);
         }
       } else {
         console.log();
@@ -235,7 +278,7 @@ export function createDoctorCommand(
 
       // Item 4: include warn checks with suggestions, not just fail; show count in label
       const recommendations = diagnostics
-        .flatMap((r) => r.checks)
+        .flatMap((r) => r.checks.map((c) => ({ ...c, pluginName: r.pluginName, displayName: r.displayName })))
         .filter((c) => (c.status === 'fail' || c.status === 'warn') && c.suggestion);
 
       if (recommendations.length > 0) {
@@ -244,7 +287,14 @@ export function createDoctorCommand(
         console.log(connector());
         recommendations.forEach((c, i) => {
           const badge = statusBadge(c.status);
-          console.log(`  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${chalk.hex('#A78BFA')(c.suggestion!)}`);
+          const pluginTag = theme.muted(`[${c.displayName}] `);
+          const prefix = `  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${pluginTag}`;
+          const continuation = `  ${theme.muted('│')}             `;
+          const lines = c.suggestion!.split('\n');
+          console.log(`${prefix}${chalk.hex('#A78BFA')(lines[0])}`);
+          for (let l = 1; l < lines.length; l++) {
+            console.log(`${continuation}${chalk.hex('#A78BFA')(lines[l])}`);
+          }
         });
       }
 

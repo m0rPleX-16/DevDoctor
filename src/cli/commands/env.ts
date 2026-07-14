@@ -109,7 +109,11 @@ function renderSecurityRisks(risks: EnvSecurityRisk[]): void {
 
     console.log(`  ${theme.muted('│')}  ${badge}  ${titleColor(risk.title)}`);
     console.log(`  ${theme.muted('│')}     ${theme.muted(risk.detail)}`);
-    console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')('💡 ' + risk.suggestion)}`);
+    const riskSuggLines = ('💡 ' + risk.suggestion).split('\n');
+    console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')(riskSuggLines[0])}`);
+    for (let i = 1; i < riskSuggLines.length; i++) {
+      console.log(`  ${theme.muted('│')}     ${chalk.hex('#A78BFA')(riskSuggLines[i])}`);
+    }
     console.log(connector());
   }
 }

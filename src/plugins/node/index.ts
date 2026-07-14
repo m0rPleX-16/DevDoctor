@@ -20,9 +20,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import type { Plugin } from '../../core/types/plugin.js';
-import type { DiagnosticResult } from '../../core/types/diagnostic.js';
+import type { DiagnosticResult, DiagnosticTask } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
 import { deriveOverallStatus } from '../../core/engine/status-utils.js';
+import { runDiagnosticTasks } from '../../core/engine/check-runner.js';
 import { checkNodeVersion } from './checks/version-check.js';
 import { checkNpm } from './checks/npm-check.js';
 import { checkNodePath } from './checks/path-check.js';
@@ -36,22 +37,44 @@ import { runCommand } from '../../infra/os/command-runner.js';
  * 1. Node.js installation and version
  * 2. npm installation and version
  * 3. PATH configuration
+ * 4. npm global permissions
  */
 export class NodePlugin implements Plugin {
   readonly name = 'node';
   readonly displayName = 'Node.js';
   readonly description = 'Diagnoses your Node.js development environment.';
+  readonly projectMarkers = ['package.json', '.nvmrc', '.node-version', 'node_modules'];
 
   async diagnose(): Promise<DiagnosticResult> {
     const startTime = performance.now();
 
-    // Run all checks concurrently — they're independent of each other
-    const checks = await Promise.all([
-      checkNodeVersion(),
-      checkNpm(),
-      checkNodePath(),
-      checkNodePermissions(),
-    ]);
+    const tasks: DiagnosticTask[] = [
+      {
+        name: 'node-version',
+        label: 'Node.js Installation',
+        run: checkNodeVersion,
+      },
+      {
+        name: 'npm-version',
+        label: 'npm Installation',
+        dependsOn: ['node-version'],
+        run: checkNpm,
+      },
+      {
+        name: 'node-path',
+        label: 'Node.js PATH',
+        dependsOn: ['node-version'],
+        run: checkNodePath,
+      },
+      {
+        name: 'node-permissions',
+        label: 'npm Permissions',
+        dependsOn: ['node-version', 'npm-version'],
+        run: checkNodePermissions,
+      },
+    ];
+
+    const checks = await runDiagnosticTasks(tasks);
 
     const durationMs = Math.round(performance.now() - startTime);
 

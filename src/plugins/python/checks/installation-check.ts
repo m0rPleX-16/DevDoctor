@@ -54,7 +54,12 @@ export async function checkPythonInstallation(): Promise<PythonInstallInfo> {
           label: 'Python Installation',
           status: 'pass',
           message: `Python ${version} is installed (${cmd}).`,
-          detail: `Python ${version} was found at the command "${cmd}". Python 3.8+ is recommended for most modern projects.`,
+          detail:
+            `Python ${version} was found using the "${cmd}" command. ` +
+            'Python 3.8+ is recommended for most modern projects — it introduced ' +
+            'walrus operators, f-string improvements, and the typing updates that ' +
+            'most current libraries depend on. Python 3.10+ adds structural pattern ' +
+            'matching; 3.11+ brings significant performance improvements.',
         },
       };
     }

@@ -254,7 +254,11 @@ async function runFix(
       console.log(`  ${theme.primary('┃')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
       console.log(`  ${theme.primary('│')}     ${theme.muted(check.message)}`);
       if (check.suggestion) {
-        console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')('💡 ' + check.suggestion)}`);
+        const suggLines = ('💡 ' + check.suggestion).split('\n');
+        console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')(suggLines[0])}`);
+        for (let i = 1; i < suggLines.length; i++) {
+          console.log(`  ${theme.primary('│')}     ${chalk.hex('#A78BFA')(suggLines[i])}`);
+        }
       }
       console.log(`  ${theme.primary('│')}`);
     }
@@ -292,7 +296,11 @@ async function runFix(
     console.log(`  ${theme.primary('┃')}  ${statusColor(check.label, check.status)}`);
     console.log(`  ${theme.primary('│')}  Current state: ${theme.muted(check.message)}`);
     if (check.suggestion) {
-      console.log(`  ${theme.primary('│')}  Proposal: ${chalk.hex('#A78BFA')(check.suggestion)}`);
+      const suggestionLines = check.suggestion.split('\n');
+      console.log(`  ${theme.primary('│')}  Proposal: ${chalk.hex('#A78BFA')(suggestionLines[0])}`);
+      for (let i = 1; i < suggestionLines.length; i++) {
+        console.log(`  ${theme.primary('│')}           ${chalk.hex('#A78BFA')(suggestionLines[i])}`);
+      }
     }
     console.log(`  ${theme.primary('│')}`);
 
@@ -330,7 +338,11 @@ async function runFix(
       console.log(`  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Repair execution failed!')}`);
       console.log(`  ${theme.primary('│')}     ${theme.muted(repairResult.message)}`);
       if (repairResult.detail) {
-        console.log(`  ${theme.primary('│')}     Detail: ${theme.muted(repairResult.detail)}`);
+        const detailLines = repairResult.detail.split('\n');
+        console.log(`  ${theme.primary('│')}     Detail: ${theme.muted(detailLines[0])}`);
+        for (let i = 1; i < detailLines.length; i++) {
+          console.log(`  ${theme.primary('│')}             ${theme.muted(detailLines[i])}`);
+        }
       }
       console.log(`  ${theme.primary('│')}`);
       console.log(`  ${theme.error('└─ ✖  Repair failed.')}`);
@@ -353,7 +365,11 @@ async function runFix(
       console.log(`  ${theme.primary('│')}    ${theme.muted('Before')}  ${statusBadge(check.status)}  ${theme.error(check.message)}`);
       console.log(`  ${theme.primary('│')}    ${theme.muted('After ')}  ${statusBadge('pass')}  ${theme.success(verifyResult.message)}`);
       if (repairResult.detail) {
-        console.log(`  ${theme.primary('│')}    ${theme.muted('Action ')}  ${theme.muted(repairResult.detail)}`);
+        const detailLines = repairResult.detail.split('\n');
+        console.log(`  ${theme.primary('│')}    ${theme.muted('Action ')}  ${theme.muted(detailLines[0])}`);
+        for (let i = 1; i < detailLines.length; i++) {
+          console.log(`  ${theme.primary('│')}             ${theme.muted(detailLines[i])}`);
+        }
       }
       console.log(`  ${theme.primary('│')}`);
       // ──────────────────────────────────────────────────────────

@@ -18,9 +18,10 @@
  */
 
 import type { Plugin } from '../../core/types/plugin.js';
-import type { DiagnosticResult } from '../../core/types/diagnostic.js';
+import type { DiagnosticResult, DiagnosticTask } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
-import { deriveOverallStatus, applyDependencySkips } from '../../core/engine/status-utils.js';
+import { deriveOverallStatus } from '../../core/engine/status-utils.js';
+import { runDiagnosticTasks } from '../../core/engine/check-runner.js';
 import { checkRedisInstallation } from './checks/installation-check.js';
 import { checkRedisService } from './checks/service-check.js';
 import { checkRedisPort, REDIS_DEFAULT_PORT } from './checks/port-check.js';
@@ -31,31 +32,44 @@ export class RedisPlugin implements Plugin {
   readonly name = 'redis';
   readonly displayName = 'Redis';
   readonly description = 'Diagnoses your Redis in-memory data store.';
+  readonly projectMarkers = ['redis.conf', 'docker-compose.yml', 'docker-compose.yaml', '.env'];
 
   async diagnose(): Promise<DiagnosticResult> {
     const startTime = performance.now();
 
-    // Step 1: installation — all other checks depend on this
-    const installCheck = await checkRedisInstallation();
+    const tasks: DiagnosticTask[] = [
+      {
+        name: 'redis-installation',
+        label: 'Redis Installation',
+        run: checkRedisInstallation,
+      },
+      {
+        name: 'redis-service',
+        label: 'Redis Service',
+        dependsOn: ['redis-installation'],
+        run: checkRedisService,
+      },
+      {
+        name: 'redis-port',
+        label: `Redis Port (${REDIS_DEFAULT_PORT})`,
+        dependsOn: ['redis-installation'],
+        run: () => checkRedisPort(REDIS_DEFAULT_PORT),
+      },
+      {
+        name: 'redis-ping',
+        label: 'Redis Connectivity',
+        dependsOn: ['redis-installation', 'redis-port'],
+        run: () => checkRedisPing(REDIS_DEFAULT_PORT),
+      },
+      {
+        name: 'redis-memory',
+        label: 'Redis Memory',
+        dependsOn: ['redis-ping'],
+        run: () => checkRedisMemory(REDIS_DEFAULT_PORT),
+      },
+    ];
 
-    // Steps 2-5: run concurrently once we know the binary exists
-    // dependsOn fields will cause the engine to skip them if installation failed
-    const [serviceCheck, portCheck, pingCheck, memoryCheck] = await Promise.all([
-      checkRedisService(),
-      checkRedisPort(REDIS_DEFAULT_PORT),
-      checkRedisPing(REDIS_DEFAULT_PORT),
-      checkRedisMemory(REDIS_DEFAULT_PORT),
-    ]);
-
-    // Apply dependency-aware skip resolution (ADR suggestion #7)
-    const checks = applyDependencySkips([
-      installCheck,
-      serviceCheck,
-      portCheck,
-      pingCheck,
-      memoryCheck,
-    ]);
-
+    const checks = await runDiagnosticTasks(tasks);
     const durationMs = Math.round(performance.now() - startTime);
 
     return {

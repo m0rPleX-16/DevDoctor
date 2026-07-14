@@ -25,6 +25,9 @@ export async function checkGitInstallation(): Promise<DiagnosticCheck> {
     label: 'Git Installation',
     status: 'pass',
     message: `Git is installed (v${version}).`,
-    detail: `You are running Git version ${version}.`,
+    detail:
+      `Git v${version} is available on your system. Git is a distributed version control ` +
+      'system that tracks changes to files over time, enabling collaboration, code history, ' +
+      'and branching workflows. It is a prerequisite for all other Git checks.',
   };
 }

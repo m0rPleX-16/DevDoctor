@@ -24,12 +24,18 @@ import type { RepairResult, VerificationResult } from '../types/repair.js';
 import type { PluginRegistry } from '../../plugins/plugin-registry.js';
 import type { IAuditLogger } from '../../infra/audit/audit-logger.js';
 import { nullAuditLogger } from '../../infra/audit/audit-logger.js';
+import { SnapshotManager } from './snapshot-manager.js';
 
 export class RepairEngine {
+  private readonly snapshotManager: SnapshotManager;
+
   constructor(
     private readonly registry: PluginRegistry,
     private readonly auditLogger: IAuditLogger = nullAuditLogger,
-  ) {}
+    snapshotManager?: SnapshotManager,
+  ) {
+    this.snapshotManager = snapshotManager ?? new SnapshotManager();
+  }
 
   /**
    * Attempt to repair a specific failed check on a plugin.
@@ -79,6 +85,10 @@ export class RepairEngine {
     let result: RepairResult;
     try {
       result = await plugin.repair(checkName);
+
+      if (result.success && result.rollbackSupported) {
+        this.snapshotManager.recordRepair(pluginName, checkName);
+      }
     } catch (err) {
       result = {
         checkName,
@@ -239,5 +249,32 @@ export class RepairEngine {
     });
 
     return result;
+  }
+
+  /**
+   * Roll back all repairs recorded in the latest snapshot.
+   * Restores the system state to before the last repair session.
+   *
+   * @param dryRun - If true, skip actual rollback
+   */
+  async rollbackAll(dryRun: boolean = false): Promise<RepairResult[]> {
+    const snapshot = this.snapshotManager.getLatestSnapshot();
+    if (!snapshot || snapshot.repairs.length === 0) {
+      return [];
+    }
+
+    const results: RepairResult[] = [];
+    // Roll back in reverse order to unwind correctly
+    for (let i = snapshot.repairs.length - 1; i >= 0; i--) {
+      const record = snapshot.repairs[i];
+      const result = await this.runRollback(record.plugin, record.checkName, dryRun);
+      results.push(result);
+    }
+
+    if (!dryRun) {
+      this.snapshotManager.clearSnapshot();
+    }
+
+    return results;
   }
 }

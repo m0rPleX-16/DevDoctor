@@ -33,6 +33,9 @@ export async function checkGitIdentity(): Promise<DiagnosticCheck> {
     label: 'Git Identity',
     status: 'pass',
     message: `Configured as ${name} <${email}>.`,
-    detail: 'Your global Git user.name and user.email are correctly configured.',
+    detail:
+      `Your global Git identity is set to "${name} <${email}>". Git embeds this name ` +
+      'and email into every commit you create, making it possible for collaborators and ' +
+      'platforms like GitHub to attribute changes to you correctly.',
   };
 }

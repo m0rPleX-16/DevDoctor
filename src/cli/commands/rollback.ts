@@ -1,10 +1,11 @@
 /**
  * Rollback Command
  *
- * The `devdoctor rollback <plugin> <check>` command.
+ * The `devdoctor rollback [plugin] [check]` command.
  *
- * Attempts to roll back the last repair performed on a specific check.
- * Only checks whose plugin implements `plugin.rollback()` support this.
+ * Without arguments, rolls back all repairs from the last repair session.
+ * With arguments, targets a specific plugin/check combination.
+ * Only available for checks whose plugin implements `plugin.rollback()`.
  *
  * When to use:
  *   - A repair succeeded mechanically but made things worse
@@ -56,150 +57,119 @@ export function createRollbackCommand(
   repairEngine: RepairEngine,
 ): Command {
   return new Command('rollback')
-    .description('Roll back the last automated repair for a specific check.')
-    .argument('<plugin>', 'The plugin name (e.g., mysql)')
-    .argument('<check>', 'The check name to roll back (e.g., mysql-service)')
+    .description('Roll back the last session of automated repairs, or a specific check.')
+    .argument('[plugin]', 'Optional: The plugin name (e.g., mysql)')
+    .argument('[check]', 'Optional: The check name to roll back (e.g., mysql-service)')
     .option('-y, --yes', 'Auto-confirm rollback without prompting')
     .addHelpText('after', `
 Examples:
-  ${chalk.cyan('devdoctor rollback mysql mysql-service')}
-  ${chalk.cyan('devdoctor rollback mysql xampp-process --yes')}
-  ${chalk.cyan('devdoctor rollback node node-permissions')}
-  ${chalk.cyan('devdoctor rollback python python-venv')}
+  ${chalk.cyan('devdoctor rollback')}                             (Rolls back all repairs from the last session)
+  ${chalk.cyan('devdoctor rollback --yes')}                       (Rolls back all repairs, auto-confirmed)
+  ${chalk.cyan('devdoctor rollback mysql mysql-service')}         (Rolls back a specific repair)
 
 Note:
   Rollback is only available for checks whose plugin implements rollback support.
   Supported checks: mysql-service, xampp-process, node-permissions, python-venv
-  Use ${chalk.white('devdoctor fix <plugin> --dry-run')} first to preview the repair state.
 `)
-    .action(async (pluginName: string, checkName: string, options: RollbackOptions) => {
+    .action(async (pluginName: string | undefined, checkName: string | undefined, options: RollbackOptions) => {
       const autoConfirm = options.yes ?? false;
 
       showCompactBanner();
 
-      // ── Validate plugin exists ──
-      const plugin = registry.get(pluginName);
-      if (!plugin) {
-        console.log();
-        console.log(`  ${theme.error(`✖ Unknown plugin: "${pluginName}"`)}`);
-        console.log();
-        console.log(`  ${theme.muted('Available plugins:')}`);
-        for (const p of registry.list()) {
-          console.log(`    ${theme.primary('›')} ${chalk.white(p.name)}`);
-        }
-        console.log();
-        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands.')}`);
-        console.log();
-        process.exitCode = 1;
-        return;
-      }
-
-      // ── Validate rollback is implemented ──
-      if (!plugin.rollback) {
-        console.log();
-        console.log(
-          `  ${theme.error(`✖ Plugin "${plugin.displayName}" does not support rollback.`)}`,
-        );
-        console.log();
-        console.log(
-          `  ${theme.muted('Only plugins that implement')} ${chalk.white('rollback()')} ` +
-          `${theme.muted('support this command.')}`,
-        );
-        console.log(
-          `  ${theme.muted('Currently supported:')}`,
-        );
-        console.log(`    ${theme.primary('›')} ${chalk.white('mysql')}  ${theme.muted('— mysql-service, xampp-process')}`);
-        console.log(`    ${theme.primary('›')} ${chalk.white('node')}   ${theme.muted('— node-permissions')}`);
-        console.log(`    ${theme.primary('›')} ${chalk.white('python')} ${theme.muted('— python-venv')}`);
-        console.log();
-        process.exitCode = 1;
-        return;
-      }
-
-      // ── TTY guard ──
-      if (!autoConfirm && !process.stdin.isTTY) {
-        console.log();
-        console.log(`  ${theme.error('✖ Interactive mode requires a TTY.')}`);
-        console.log(
-          `  ${theme.muted('Use')} ${chalk.white('--yes')} ` +
-          `${theme.muted('to auto-confirm in non-interactive environments.')}`,
-        );
-        console.log();
-        process.exitCode = 1;
-        return;
-      }
-
-      console.log();
-      console.log(`  ${hr(`${plugin.displayName} Rollback`, 48)}`);
-      console.log();
-      console.log(`  ${theme.warning('⚠ You are about to roll back a repair.')}`);
-      console.log(`  ${theme.muted('Plugin:')}  ${chalk.white(plugin.displayName)}`);
-      console.log(`  ${theme.muted('Check: ')}  ${chalk.white(checkName)}`);
-      console.log();
-      console.log(
-        `  ${theme.muted('This will attempt to undo the repair for')} ` +
-        `${chalk.white(`"${checkName}"`)}${theme.muted('.')}`,
-      );
-      console.log(
-        `  ${theme.muted('The exact action depends on what the repair did (e.g., stopping a service it started).')}`,
-      );
-      console.log();
-
-      // ── Confirmation ──
-      if (!autoConfirm) {
-        const confirmed = await askConfirmation(
-          `  ${theme.primary('👉')}  Proceed with rollback? (y/N): `,
-        );
-        if (!confirmed) {
-          console.log();
-          console.log(`  ${theme.muted('Rollback cancelled.')}`);
-          console.log();
+      // ── Session Rollback (No arguments) ──
+      if (!pluginName || !checkName) {
+        if (!autoConfirm && !process.stdin.isTTY) {
+          console.log(`\n  ${theme.error('✖ Interactive mode requires a TTY.')}\n  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to auto-confirm in non-interactive environments.')}\n`);
+          process.exitCode = 1;
           return;
         }
-      } else {
-        console.log(`  ${theme.muted('(--yes) Auto-confirming rollback.')}`);
+
+        console.log(`\n  ${hr('Session Rollback', 48)}\n`);
+        console.log(`  ${theme.warning('⚠ You are about to roll back all repairs from the last session.')}\n`);
+
+        if (!autoConfirm) {
+          const confirmed = await askConfirmation(`  ${theme.primary('👉')}  Proceed with rollback? (y/N): `);
+          if (!confirmed) {
+            console.log(`\n  ${theme.muted('Rollback cancelled.')}\n`);
+            return;
+          }
+        } else {
+          console.log(`  ${theme.muted('(--yes) Auto-confirming rollback.')}`);
+        }
+
+        console.log();
+        const spinner = createSpinner('Rolling back previous session...');
+        const results = await repairEngine.rollbackAll(false);
+        spinner.stop();
+
+        if (results.length === 0) {
+          console.log(`  ${theme.muted('No rollback snapshot found. Nothing to do.')}\n`);
+          return;
+        }
+
+        let hasFailures = false;
+        for (const result of results) {
+          if (result.success) {
+            console.log(`  ${statusBadge('pass')}  ${chalk.white(result.checkName)}: ${theme.success('Rollback succeeded.')}`);
+          } else {
+            hasFailures = true;
+            console.log(`  ${statusBadge('fail')}  ${chalk.white(result.checkName)}: ${theme.error('Rollback failed.')}`);
+            console.log(`  ${theme.muted('│')}  ${result.message}`);
+          }
+        }
+
+        if (hasFailures) process.exitCode = 1;
+        console.log(`\n  ${hr(undefined, 48)}\n`);
+        return;
+      }
+
+      // ── Specific Check Rollback (With arguments) ──
+      const plugin = registry.get(pluginName);
+      if (!plugin) {
+        console.log(`\n  ${theme.error(`✖ Unknown plugin: "${pluginName}"`)}\n`);
+        process.exitCode = 1;
+        return;
+      }
+
+      if (!plugin.rollback) {
+        console.log(`\n  ${theme.error(`✖ Plugin "${plugin.displayName}" does not support rollback.`)}\n`);
+        process.exitCode = 1;
+        return;
+      }
+
+      if (!autoConfirm && !process.stdin.isTTY) {
+        console.log(`\n  ${theme.error('✖ Interactive mode requires a TTY.')}\n`);
+        process.exitCode = 1;
+        return;
+      }
+
+      console.log(`\n  ${hr(`${plugin.displayName} Rollback`, 48)}\n`);
+      console.log(`  ${theme.warning('⚠ You are about to roll back a specific repair.')}`);
+      console.log(`  ${theme.muted('Plugin:')}  ${chalk.white(plugin.displayName)}`);
+      console.log(`  ${theme.muted('Check: ')}  ${chalk.white(checkName)}\n`);
+
+      if (!autoConfirm) {
+        const confirmed = await askConfirmation(`  ${theme.primary('👉')}  Proceed with rollback? (y/N): `);
+        if (!confirmed) {
+          console.log(`\n  ${theme.muted('Rollback cancelled.')}\n`);
+          return;
+        }
       }
 
       console.log();
-
-      // ── Execute rollback ──
       const spinner = createSpinner(`Rolling back "${checkName}" on ${plugin.displayName}...`);
       const result = await repairEngine.runRollback(pluginName, checkName, false);
       spinner.stop();
 
       if (result.success) {
-        console.log(
-          `  ${statusBadge('pass')}  ${theme.success('Rollback succeeded.')}`,
-        );
+        console.log(`  ${statusBadge('pass')}  ${theme.success('Rollback succeeded.')}`);
         console.log(`  ${theme.muted('│')}  ${result.message}`);
-        if (result.detail) {
-          console.log(`  ${theme.muted('│')}  ${theme.muted(result.detail)}`);
-        }
       } else {
-        console.log(
-          `  ${statusBadge('fail')}  ${theme.error('Rollback failed.')}`,
-        );
+        console.log(`  ${statusBadge('fail')}  ${theme.error('Rollback failed.')}`);
         console.log(`  ${theme.muted('│')}  ${result.message}`);
-        if (result.detail) {
-          console.log(`  ${theme.muted('│')}  ${theme.muted(result.detail)}`);
-        }
-        console.log();
-        console.log(
-          `  ${theme.muted('Manual intervention may be required. ' +
-          'Check the service or process state directly.')}`,
-        );
         process.exitCode = 1;
       }
 
-      console.log();
-      console.log(`  ${hr(undefined, 48)}`);
-      console.log();
-
-      // Post-rollback: suggest re-diagnosing to confirm the environment state
-      console.log(
-        `  ${theme.muted('Run')} ${chalk.white(`devdoctor diagnose ${pluginName}`)} ` +
-        `${theme.muted('to confirm the current environment state.')}`,
-      );
-      console.log();
+      console.log(`\n  ${hr(undefined, 48)}\n`);
     });
 }
