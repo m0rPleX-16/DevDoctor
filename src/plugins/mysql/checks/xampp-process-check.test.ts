@@ -14,17 +14,25 @@ import { checkXamppProcess, resolveMysqldPath } from './xampp-process-check.js';
 /** Builds a tasklist mock result simulating a running mysqld.exe */
 function tasklistRunning(pid = 1234) {
   return {
-    command: 'tasklist', args: [],
+    command: 'tasklist',
+    args: [],
     stdout: `"mysqld.exe","${pid}","Services","0","45,212 K"`,
-    stderr: '', exitCode: 0, success: true, durationMs: 5,
+    stderr: '',
+    exitCode: 0,
+    success: true,
+    durationMs: 5,
   };
 }
 
 /** Builds a tasklist mock result simulating no process found */
 const tasklistEmpty = {
-  command: 'tasklist', args: [],
+  command: 'tasklist',
+  args: [],
   stdout: 'No tasks are running which match the specified criteria.',
-  stderr: '', exitCode: 0, success: true, durationMs: 5,
+  stderr: '',
+  exitCode: 0,
+  success: true,
+  durationMs: 5,
 };
 
 describe('xampp-process-check', () => {

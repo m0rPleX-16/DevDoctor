@@ -11,7 +11,6 @@
  * - How Windows UAC and Unix sudo relate to service management
  */
 
-import path from 'node:path';
 import type { DiagnosticCheck } from '../../../core/types/diagnostic.js';
 import { checkElevation, checkFileAccess } from '../../../infra/system/permissions-checker.js';
 import { parseConfigFile } from '../../../infra/system/config-parser.js';
@@ -52,10 +51,7 @@ async function resolveDataDir(): Promise<string | undefined> {
  * Run the MySQL permissions check.
  */
 export async function checkMysqlPermissions(): Promise<DiagnosticCheck> {
-  const [elevation, dataDir] = await Promise.all([
-    checkElevation(),
-    resolveDataDir(),
-  ]);
+  const [elevation, dataDir] = await Promise.all([checkElevation(), resolveDataDir()]);
 
   // Build detail sections
   const elevationLine = elevation.isElevated

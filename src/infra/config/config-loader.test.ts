@@ -2,15 +2,13 @@
  * Config Loader Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 
 vi.mock('node:fs');
 
 // Import after mock
-import { loadConfig, writeProjectConfig } from './config-loader.js';
+import { loadConfig } from './config-loader.js';
 
 describe('config-loader', () => {
   beforeEach(() => {
@@ -28,12 +26,8 @@ describe('config-loader', () => {
     });
 
     it('applies project config over defaults', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) =>
-        String(p).endsWith('devdoctor.json'),
-      );
-      vi.mocked(fs.readFileSync).mockReturnValue(
-        JSON.stringify({ defaultFormat: 'json' }),
-      );
+      vi.mocked(fs.existsSync).mockImplementation((p) => String(p).endsWith('devdoctor.json'));
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultFormat: 'json' }));
 
       const config = loadConfig();
       expect(config.defaultFormat).toBe('json');
@@ -49,26 +43,20 @@ describe('config-loader', () => {
       });
 
       const config = loadConfig();
-      expect(config.defaultFormat).toBe('json');           // project wins
+      expect(config.defaultFormat).toBe('json'); // project wins
       expect(config.reportOutputDir).toBe('/user/reports'); // user value preserved
     });
 
     it('ignores invalid defaultFormat and uses default', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) =>
-        String(p).endsWith('devdoctor.json'),
-      );
-      vi.mocked(fs.readFileSync).mockReturnValue(
-        JSON.stringify({ defaultFormat: 'xml' }),
-      );
+      vi.mocked(fs.existsSync).mockImplementation((p) => String(p).endsWith('devdoctor.json'));
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultFormat: 'xml' }));
 
       const config = loadConfig();
       expect(config.defaultFormat).toBe('terminal'); // falls back to default
     });
 
     it('handles malformed JSON gracefully without throwing', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) =>
-        String(p).endsWith('devdoctor.json'),
-      );
+      vi.mocked(fs.existsSync).mockImplementation((p) => String(p).endsWith('devdoctor.json'));
       vi.mocked(fs.readFileSync).mockReturnValue('{ not valid json }');
 
       expect(() => loadConfig()).not.toThrow();
@@ -77,9 +65,7 @@ describe('config-loader', () => {
     });
 
     it('reads plugin disabled flags', () => {
-      vi.mocked(fs.existsSync).mockImplementation((p) =>
-        String(p).endsWith('devdoctor.json'),
-      );
+      vi.mocked(fs.existsSync).mockImplementation((p) => String(p).endsWith('devdoctor.json'));
       vi.mocked(fs.readFileSync).mockReturnValue(
         JSON.stringify({ plugins: { mysql: { disabled: true } } }),
       );

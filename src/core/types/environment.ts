@@ -17,14 +17,7 @@
  * Grouping makes it easier to scan a potentially long list of
  * variables and find the ones relevant to a specific technology.
  */
-export type EnvCategory =
-  | 'system'
-  | 'node'
-  | 'java'
-  | 'python'
-  | 'docker'
-  | 'git'
-  | 'other';
+export type EnvCategory = 'system' | 'node' | 'java' | 'python' | 'docker' | 'git' | 'other';
 
 /**
  * Human-readable labels for each category.

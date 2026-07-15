@@ -45,7 +45,7 @@ export async function checkNpm(): Promise<DiagnosticCheck> {
     message: `npm ${version} is installed.`,
     detail:
       `npm v${version} is available on your system. npm is bundled with Node.js but can ` +
-      'be updated independently using `npm install -g npm`. It manages your project\'s ' +
+      "be updated independently using `npm install -g npm`. It manages your project's " +
       'dependencies through the package.json file, which lists all the packages your ' +
       'project depends on.',
   };

@@ -29,8 +29,9 @@ function formatPlugins(plugins: Record<string, { disabled?: boolean }>): string 
   const entries = Object.entries(plugins);
   if (entries.length === 0) return theme.muted('(none configured)');
   return entries
-    .map(([name, cfg]) =>
-      `${chalk.white(name)}: ${cfg.disabled ? theme.error('disabled') : theme.success('enabled')}`,
+    .map(
+      ([name, cfg]) =>
+        `${chalk.white(name)}: ${cfg.disabled ? theme.error('disabled') : theme.success('enabled')}`,
     )
     .join(', ');
 }
@@ -38,8 +39,7 @@ function formatPlugins(plugins: Record<string, { disabled?: boolean }>): string 
 // ── Command factory ───────────────────────────────────────────────
 
 export function createConfigCommand(): Command {
-  const config = new Command('config')
-    .description('Manage DevDoctor configuration.');
+  const config = new Command('config').description('Manage DevDoctor configuration.');
 
   // ── config init ──
   config
@@ -56,7 +56,7 @@ export function createConfigCommand(): Command {
         console.log();
         console.log(
           `  ${theme.muted('Use')} ${chalk.white('devdoctor config init --force')} ` +
-          `${theme.muted('to overwrite it.')}`,
+            `${theme.muted('to overwrite it.')}`,
         );
         console.log();
         return;
@@ -73,8 +73,12 @@ export function createConfigCommand(): Command {
         console.log(`  ${theme.success('✓')} Created ${chalk.white('devdoctor.json')} at:`);
         console.log(`    ${chalk.white(configPath)}`);
         console.log();
-        console.log(`  ${theme.muted('Edit it to customise output format, report directory, and plugin settings.')}`);
-        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor config show')} ${theme.muted('to see the resolved config.')}`);
+        console.log(
+          `  ${theme.muted('Edit it to customise output format, report directory, and plugin settings.')}`,
+        );
+        console.log(
+          `  ${theme.muted('Run')} ${chalk.white('devdoctor config show')} ${theme.muted('to see the resolved config.')}`,
+        );
         console.log();
       } catch (err) {
         console.log();
@@ -98,8 +102,12 @@ export function createConfigCommand(): Command {
         resolved = loadConfig();
       } catch (err) {
         console.log();
-        console.log(`  ${theme.error(`✖ Could not load configuration: ${err instanceof Error ? err.message : String(err)}`)}`);
-        console.log(`  ${theme.muted('Check your devdoctor.json for syntax errors, or run')} ${chalk.white('devdoctor config path')} ${theme.muted('to locate the file.')}`);
+        console.log(
+          `  ${theme.error(`✖ Could not load configuration: ${err instanceof Error ? err.message : String(err)}`)}`,
+        );
+        console.log(
+          `  ${theme.muted('Check your devdoctor.json for syntax errors, or run')} ${chalk.white('devdoctor config path')} ${theme.muted('to locate the file.')}`,
+        );
         console.log();
         process.exitCode = 1;
         return;
@@ -130,20 +138,21 @@ export function createConfigCommand(): Command {
       console.log(`  ${theme.muted('User-level config  (lower priority):')}`);
       console.log(
         `    ${fs.existsSync(userPath) ? theme.success('✓') : theme.muted('○')}  ` +
-        `${chalk.white(userPath)}` +
-        `${fs.existsSync(userPath) ? '' : theme.muted('  (not found)')}`,
+          `${chalk.white(userPath)}` +
+          `${fs.existsSync(userPath) ? '' : theme.muted('  (not found)')}`,
       );
       console.log();
       console.log(`  ${theme.muted('Project-level config (higher priority):')}`);
       console.log(
         `    ${fs.existsSync(projectPath) ? theme.success('✓') : theme.muted('○')}  ` +
-        `${chalk.white(projectPath)}` +
-        `${fs.existsSync(projectPath) ? '' : theme.muted('  (not found)')}`,
+          `${chalk.white(projectPath)}` +
+          `${fs.existsSync(projectPath) ? '' : theme.muted('  (not found)')}`,
       );
       console.log();
       console.log(
-        `  ${theme.muted('Project config overrides user config. ' +
-        'Run')} ${chalk.white('devdoctor config init')} ${theme.muted('to create one.')}`,
+        `  ${theme.muted(
+          'Project config overrides user config. ' + 'Run',
+        )} ${chalk.white('devdoctor config init')} ${theme.muted('to create one.')}`,
       );
       console.log();
     });

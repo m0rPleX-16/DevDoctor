@@ -30,15 +30,10 @@ import { stdin as input, stdout as output } from 'node:process';
 import chalk from 'chalk';
 import type { DiagnosticEngine } from '../../core/engine/diagnostic-engine.js';
 import type { RepairEngine } from '../../core/engine/repair-engine.js';
-import type { PluginRegistry } from '../../plugins/plugin-registry.js';
+import type { PluginRegistry } from '../../core/plugin-registry.js';
 import { createSpinner } from '../ui/spinner.js';
 import { showCompactBanner } from '../ui/banner.js';
-import {
-  theme,
-  hr,
-  statusBadge,
-  statusColor,
-} from '../ui/formatter.js';
+import { theme, hr, statusBadge, statusColor } from '../ui/formatter.js';
 
 // ── Lockfile ──────────────────────────────────────────────────────
 
@@ -86,6 +81,7 @@ function acquireLock(): () => void {
     if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
       throw new Error(
         `Another devdoctor fix is already running. If this is incorrect, delete ${LOCK_FILE} and try again.`,
+        { cause: err },
       );
     }
     throw err;
@@ -146,7 +142,9 @@ export function createFixCommand(
           console.log(`    ${theme.primary('›')} ${chalk.white(`devdoctor fix ${name}`)}`);
         }
         console.log();
-        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+        console.log(
+          `  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`,
+        );
         console.log();
         process.exitCode = 1;
         return;
@@ -156,12 +154,18 @@ export function createFixCommand(
       if (!autoConfirm && !dryRun && !process.stdin.isTTY) {
         console.log();
         console.log(`  ${theme.error('✖ Interactive mode requires a TTY.')}`);
-        console.log(`  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to auto-confirm repairs in non-interactive environments:')}`);
+        console.log(
+          `  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to auto-confirm repairs in non-interactive environments:')}`,
+        );
         console.log(`    ${chalk.cyan(`devdoctor fix ${pluginName} --yes`)}`);
-        console.log(`  ${theme.muted('Use')} ${chalk.white('--dry-run')} ${theme.muted('to preview what would be repaired:')}`);
+        console.log(
+          `  ${theme.muted('Use')} ${chalk.white('--dry-run')} ${theme.muted('to preview what would be repaired:')}`,
+        );
         console.log(`    ${chalk.cyan(`devdoctor fix ${pluginName} --dry-run`)}`);
         console.log();
-        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+        console.log(
+          `  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`,
+        );
         console.log();
         process.exitCode = 1;
         return;
@@ -176,7 +180,9 @@ export function createFixCommand(
           console.log();
           console.log(`  ${theme.error(`✖ ${err instanceof Error ? err.message : String(err)}`)}`);
           console.log();
-          console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+          console.log(
+            `  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`,
+          );
           console.log();
           process.exitCode = 1;
           return;
@@ -184,7 +190,15 @@ export function createFixCommand(
       }
 
       try {
-        await runFix(pluginName, plugin.displayName, autoConfirm, dryRun, registry, engine, repairEngine);
+        await runFix(
+          pluginName,
+          plugin.displayName,
+          autoConfirm,
+          dryRun,
+          registry,
+          engine,
+          repairEngine,
+        );
       } finally {
         releaseLock?.();
       }
@@ -205,7 +219,9 @@ async function runFix(
   const startTime = performance.now();
   const diagSpinner = createSpinner(`Pre-repair diagnosis: ${displayName}...`);
   const result = await engine.runDiagnostics(pluginName);
-  diagSpinner.succeed(`Diagnosis complete — ${result?.checks.length ?? 0} checks in ${result?.durationMs ?? 0}ms`);
+  diagSpinner.succeed(
+    `Diagnosis complete — ${result?.checks.length ?? 0} checks in ${result?.durationMs ?? 0}ms`,
+  );
 
   if (!result) {
     console.log(`  ${theme.error('✖ Failed to obtain diagnostic results.')}`);
@@ -239,7 +255,9 @@ async function runFix(
 
   if (issues.length === 0) {
     console.log();
-    console.log(`  ${statusBadge('pass')}  ${theme.success('No issues found. Your environment is healthy!')}`);
+    console.log(
+      `  ${statusBadge('pass')}  ${theme.success('No issues found. Your environment is healthy!')}`,
+    );
     console.log();
     console.log(`  ${hr(undefined, 48)}`);
     console.log();
@@ -248,10 +266,14 @@ async function runFix(
 
   if (repairableIssues.length === 0) {
     console.log();
-    console.log(`  ${statusBadge('warn')}  ${theme.warning(`Found ${issues.length} issue(s), but none have automated repairs.`)}`);
+    console.log(
+      `  ${statusBadge('warn')}  ${theme.warning(`Found ${issues.length} issue(s), but none have automated repairs.`)}`,
+    );
     console.log();
     for (const check of issues) {
-      console.log(`  ${theme.primary('┃')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`);
+      console.log(
+        `  ${theme.primary('┃')} ${statusBadge(check.status)}  ${statusColor(check.label, check.status)}`,
+      );
       console.log(`  ${theme.primary('│')}     ${theme.muted(check.message)}`);
       if (check.suggestion) {
         const suggLines = ('✦ ' + check.suggestion).split('\n');
@@ -276,7 +298,9 @@ async function runFix(
 
   if (issues.length > repairableIssues.length) {
     const unrepairable = issues.length - repairableIssues.length;
-    console.log(`  ${theme.muted(`  (${unrepairable} additional issue(s) have no automated repair — see diagnose output.)`)}`);
+    console.log(
+      `  ${theme.muted(`  (${unrepairable} additional issue(s) have no automated repair — see diagnose output.)`)}`,
+    );
   }
   console.log();
 
@@ -285,7 +309,9 @@ async function runFix(
   let skipCount = 0;
 
   if (autoConfirm && !dryRun && repairableIssues.length > 0) {
-    console.log(`  ${theme.warning(`⚡ Auto-confirm active. Applying ${repairableIssues.length} repair(s):`)}`);
+    console.log(
+      `  ${theme.warning(`⚡ Auto-confirm active. Applying ${repairableIssues.length} repair(s):`)}`,
+    );
     for (const check of repairableIssues) {
       console.log(`  ${theme.muted('  ›')} ${chalk.white(check.label)}`);
     }
@@ -299,14 +325,18 @@ async function runFix(
       const suggestionLines = check.suggestion.split('\n');
       console.log(`  ${theme.primary('│')}  Proposal: ${chalk.hex('#A78BFA')(suggestionLines[0])}`);
       for (let i = 1; i < suggestionLines.length; i++) {
-        console.log(`  ${theme.primary('│')}           ${chalk.hex('#A78BFA')(suggestionLines[i])}`);
+        console.log(
+          `  ${theme.primary('│')}           ${chalk.hex('#A78BFA')(suggestionLines[i])}`,
+        );
       }
     }
     console.log(`  ${theme.primary('│')}`);
 
     // Dry-run: list and skip
     if (dryRun) {
-      console.log(`  ${theme.primary('│')}  ${statusBadge('skip')}  ${theme.muted('[Dry run] Would attempt this repair.')}`);
+      console.log(
+        `  ${theme.primary('│')}  ${statusBadge('skip')}  ${theme.muted('[Dry run] Would attempt this repair.')}`,
+      );
       console.log(`  ${theme.muted('└─ ○  Dry run — skipped.')}`);
       console.log();
       skipCount++;
@@ -335,7 +365,9 @@ async function runFix(
     repairSpinner.stop();
 
     if (!repairResult.success) {
-      console.log(`  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Repair execution failed!')}`);
+      console.log(
+        `  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Repair execution failed!')}`,
+      );
       console.log(`  ${theme.primary('│')}     ${theme.muted(repairResult.message)}`);
       if (repairResult.detail) {
         const detailLines = repairResult.detail.split('\n');
@@ -358,15 +390,23 @@ async function runFix(
     verifySpinner.stop();
 
     if (verifyResult.success) {
-      console.log(`  ${theme.primary('│')}  ${statusBadge('pass')}  ${theme.success('Verification passed. Issue resolved!')}`);
+      console.log(
+        `  ${theme.primary('│')}  ${statusBadge('pass')}  ${theme.success('Verification passed. Issue resolved!')}`,
+      );
       // ── State transition diff ──────────────────────────────────
       console.log(`  ${theme.primary('│')}`);
       console.log(`  ${theme.primary('│')}  ${theme.muted('State transition:')}`);
-      console.log(`  ${theme.primary('│')}    ${theme.muted('Before')}  ${statusBadge(check.status)}  ${theme.error(check.message)}`);
-      console.log(`  ${theme.primary('│')}    ${theme.muted('After ')}  ${statusBadge('pass')}  ${theme.success(verifyResult.message)}`);
+      console.log(
+        `  ${theme.primary('│')}    ${theme.muted('Before')}  ${statusBadge(check.status)}  ${theme.error(check.message)}`,
+      );
+      console.log(
+        `  ${theme.primary('│')}    ${theme.muted('After ')}  ${statusBadge('pass')}  ${theme.success(verifyResult.message)}`,
+      );
       if (repairResult.detail) {
         const detailLines = repairResult.detail.split('\n');
-        console.log(`  ${theme.primary('│')}    ${theme.muted('Action ')}  ${theme.muted(detailLines[0])}`);
+        console.log(
+          `  ${theme.primary('│')}    ${theme.muted('Action ')}  ${theme.muted(detailLines[0])}`,
+        );
         for (let i = 1; i < detailLines.length; i++) {
           console.log(`  ${theme.primary('│')}             ${theme.muted(detailLines[i])}`);
         }
@@ -376,20 +416,28 @@ async function runFix(
       console.log(`  ${theme.primary('└─ ✓  Resolved.')}`);
       successCount++;
     } else {
-      console.log(`  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Verification failed! The issue persists.')}`);
+      console.log(
+        `  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Verification failed! The issue persists.')}`,
+      );
       console.log(`  ${theme.primary('│')}     ${theme.muted(verifyResult.message)}`);
 
       if (repairResult.rollbackSupported) {
         console.log(`  ${theme.primary('│')}`);
-        console.log(`  ${theme.primary('│')}  ${theme.warning('↺  Repair flagged as rollback-supported. Attempting rollback...')}`);
+        console.log(
+          `  ${theme.primary('│')}  ${theme.warning('↺  Repair flagged as rollback-supported. Attempting rollback...')}`,
+        );
         const rollbackSpinner = createSpinner('Rolling back...');
         const rollbackResult = await repairEngine.runRollback(pluginName, check.name, false);
         rollbackSpinner.stop();
 
         if (rollbackResult.success) {
-          console.log(`  ${theme.primary('│')}  ${statusBadge('warn')}  ${theme.warning('Rolled back successfully. System restored to previous state.')}`);
+          console.log(
+            `  ${theme.primary('│')}  ${statusBadge('warn')}  ${theme.warning('Rolled back successfully. System restored to previous state.')}`,
+          );
         } else {
-          console.log(`  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Rollback also failed. Manual intervention may be required.')}`);
+          console.log(
+            `  ${theme.primary('│')}  ${statusBadge('fail')}  ${theme.error('Rollback also failed. Manual intervention may be required.')}`,
+          );
           console.log(`  ${theme.primary('│')}     ${theme.muted(rollbackResult.message)}`);
         }
       }
@@ -407,7 +455,9 @@ async function runFix(
   const elapsedMs = Math.round(performance.now() - startTime);
 
   if (dryRun) {
-    console.log(`  ${theme.primary(`ℹ Dry run complete. ${repairableIssues.length} repair(s) would be attempted. (${elapsedMs}ms)`)}`);
+    console.log(
+      `  ${theme.primary(`ℹ Dry run complete. ${repairableIssues.length} repair(s) would be attempted. (${elapsedMs}ms)`)}`,
+    );
     console.log(`  ${theme.muted('Run without --dry-run to apply them.')}`);
   } else {
     const summaryParts = [
@@ -417,7 +467,9 @@ async function runFix(
     ].filter(Boolean);
 
     if (summaryParts.length > 0) {
-      console.log(`  ${summaryParts.join(theme.muted(' · '))} ${theme.muted('·')} ${theme.muted(`${elapsedMs}ms`)}`);
+      console.log(
+        `  ${summaryParts.join(theme.muted(' · '))} ${theme.muted('·')} ${theme.muted(`${elapsedMs}ms`)}`,
+      );
     } else {
       console.log(`  ${theme.muted('No repairs were attempted.')}`);
     }

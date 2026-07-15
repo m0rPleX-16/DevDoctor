@@ -11,7 +11,13 @@
  */
 
 /** System service names to probe on Windows, in priority order. */
-export const MYSQL_WINDOWS_SERVICES = ['MySQL90', 'MySQL80', 'MySQL', 'xamppmysql', 'wampmysqld'] as const;
+export const MYSQL_WINDOWS_SERVICES = [
+  'MySQL90',
+  'MySQL80',
+  'MySQL',
+  'xamppmysql',
+  'wampmysqld',
+] as const;
 
 /** System service names to probe on Unix, in priority order. */
 export const MYSQL_UNIX_SERVICES = ['mysql', 'mariadb'] as const;
@@ -28,6 +34,16 @@ export const MYSQL_CONFIG_PATHS_WINDOWS = [
   'C:\\Program Files\\MySQL\\MySQL Server 8.4\\my.ini',
   'C:\\Program Files\\MySQL\\MySQL Server 8.0\\my.ini',
   'C:\\tools\\mysql\\my.ini',
+] as const;
+
+/** Common locations for my.cnf on Unix/macOS systems. */
+export const MYSQL_CONFIG_PATHS_UNIX = [
+  '/etc/mysql/my.cnf',
+  '/etc/my.cnf',
+  '/etc/mysql/mysql.conf.d/mysqld.cnf',
+  '/usr/local/etc/my.cnf', // macOS Homebrew (Intel)
+  '/opt/homebrew/etc/my.cnf', // macOS Homebrew (Apple Silicon)
+  '~/.my.cnf',
 ] as const;
 
 /**

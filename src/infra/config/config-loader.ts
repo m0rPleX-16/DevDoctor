@@ -72,7 +72,9 @@ function parseConfig(raw: unknown, source: string): DevDoctorConfig {
     if (typeof obj.reportOutputDir === 'string' && obj.reportOutputDir.trim().length > 0) {
       result.reportOutputDir = obj.reportOutputDir.trim();
     } else {
-      console.warn(`[devdoctor] Invalid reportOutputDir in ${source} — must be a non-empty string.`);
+      console.warn(
+        `[devdoctor] Invalid reportOutputDir in ${source} — must be a non-empty string.`,
+      );
     }
   }
 
@@ -198,9 +200,7 @@ export function writeProjectConfig(config: DevDoctorConfig): void {
   const safeRoot = path.resolve(process.cwd());
   const resolved = path.resolve(configPath);
   if (!resolved.startsWith(safeRoot + path.sep) && resolved !== safeRoot) {
-    throw new Error(
-      `Config path "${resolved}" escapes the project directory "${safeRoot}".`,
-    );
+    throw new Error(`Config path "${resolved}" escapes the project directory "${safeRoot}".`);
   }
 
   const existing = readConfigFile(configPath);

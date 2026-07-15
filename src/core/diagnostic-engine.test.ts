@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DiagnosticEngine } from '../core/engine/diagnostic-engine.js';
-import { PluginRegistry } from '../plugins/plugin-registry.js';
+import { PluginRegistry } from './plugin-registry.js';
 import type { Plugin } from '../core/types/plugin.js';
 import type { DiagnosticResult } from '../core/types/diagnostic.js';
 

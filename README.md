@@ -4,7 +4,7 @@
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.7**
+> Current version: **0.4.8**
 
 ---
 
@@ -132,6 +132,7 @@ Running `devdoctor` with no arguments in a TTY launches an arrow-key navigation 
 | Rollback | "Last session" (no-args rollback) or "Specific check" → plugin → check name → "Auto-confirm?" → `--yes` |
 | Config | "What would you like to do?" → init / show / path |
 | Clean | Prompts for target: snapshot / history / audit / lock / all |
+| Completion | "Which shell to generate completions for?" → bash / zsh / fish / pwsh |
 
 In non-TTY environments (pipes, CI), running with no arguments falls back to the standard help output unchanged.
 
@@ -480,6 +481,8 @@ npm run build        # Compile TypeScript to dist/
 npm start            # Run compiled output
 npm test             # Run unit tests
 npm run test:watch   # Run tests in watch mode
+npm run lint         # Check code quality and style using ESLint
+npm run format       # Format codebase using Prettier
 ```
 
 ### Adding a New Plugin

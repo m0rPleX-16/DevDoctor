@@ -1,6 +1,6 @@
 {
   "name": "@m0rplex-16/devdoctor",
-  "version": "0.4.7",
+  "version": "0.4.9",
   "description": "A plugin-based CLI utility that diagnoses, explains, and safely repairs common development environment issues.",
   "repository": {
     "type": "git",
@@ -23,6 +23,8 @@
     "start": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "lint": "eslint \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
     "build:binary": "npm run build && pkg .",
     "build:binary:win": "npm run build && pkg . --targets node22-win-x64 --output binaries/devdoctor-win.exe",
     "build:binary:linux": "npm run build && pkg . --targets node22-linux-x64 --output binaries/devdoctor-linux",
@@ -45,10 +47,16 @@
     "ora": "^8.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.0",
     "@yao-pkg/pkg": "^5.12.0",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.9.5",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
+    "typescript-eslint": "^8.64.0",
     "vitest": "^3.1.0"
   },
   "pkg": {

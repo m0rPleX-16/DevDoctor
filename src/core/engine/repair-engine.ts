@@ -21,9 +21,9 @@
  */
 
 import type { RepairResult, VerificationResult } from '../types/repair.js';
-import type { PluginRegistry } from '../../plugins/plugin-registry.js';
-import type { IAuditLogger } from '../../infra/audit/audit-logger.js';
-import { nullAuditLogger } from '../../infra/audit/audit-logger.js';
+import type { PluginRegistry } from '../plugin-registry.js';
+import type { IAuditLogger } from '../types/audit-logger.js';
+import { nullAuditLogger } from '../types/audit-logger.js';
 import { SnapshotManager } from './snapshot-manager.js';
 
 export class RepairEngine {

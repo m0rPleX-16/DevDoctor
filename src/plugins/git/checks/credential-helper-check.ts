@@ -63,7 +63,8 @@ export async function checkCredentialHelper(): Promise<DiagnosticCheck> {
       ? `Credential helper is set to 'store' (plaintext). Consider a secure alternative.`
       : `Configured: ${helperLabel}.`,
     detail:
-      CREDENTIAL_DETAIL + '\n\n' +
+      CREDENTIAL_DETAIL +
+      '\n\n' +
       (isPlaintext
         ? 'The "store" helper saves credentials in a plaintext file (~/.git-credentials). ' +
           'This is convenient but insecure — anyone with access to your home directory can read your tokens.'

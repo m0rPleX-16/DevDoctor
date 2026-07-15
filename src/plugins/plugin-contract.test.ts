@@ -34,27 +34,31 @@ export function testPluginContract(plugin: Plugin, timeout = 10_000) {
       }
     });
 
-    it('returns a valid DiagnosticResult from diagnose()', async () => {
-      const result = await plugin.diagnose();
+    it(
+      'returns a valid DiagnosticResult from diagnose()',
+      async () => {
+        const result = await plugin.diagnose();
 
-      expect(result).toBeDefined();
-      expect(result.pluginName).toBe(plugin.name);
-      expect(result.displayName).toBe(plugin.displayName);
-      expect(result.timestamp).toBeInstanceOf(Date);
-      expect(typeof result.durationMs).toBe('number');
-      expect(result.durationMs).toBeGreaterThanOrEqual(0);
-      expect(['pass', 'fail', 'warn', 'skip']).toContain(result.overallStatus);
+        expect(result).toBeDefined();
+        expect(result.pluginName).toBe(plugin.name);
+        expect(result.displayName).toBe(plugin.displayName);
+        expect(result.timestamp).toBeInstanceOf(Date);
+        expect(typeof result.durationMs).toBe('number');
+        expect(result.durationMs).toBeGreaterThanOrEqual(0);
+        expect(['pass', 'fail', 'warn', 'skip']).toContain(result.overallStatus);
 
-      expect(Array.isArray(result.checks)).toBe(true);
-      expect(result.checks.length).toBeGreaterThan(0);
+        expect(Array.isArray(result.checks)).toBe(true);
+        expect(result.checks.length).toBeGreaterThan(0);
 
-      for (const check of result.checks) {
-        expect(typeof check.name).toBe('string');
-        expect(typeof check.label).toBe('string');
-        expect(['pass', 'fail', 'warn', 'skip']).toContain(check.status);
-        expect(typeof check.message).toBe('string');
-      }
-    }, timeout);
+        for (const check of result.checks) {
+          expect(typeof check.name).toBe('string');
+          expect(typeof check.label).toBe('string');
+          expect(['pass', 'fail', 'warn', 'skip']).toContain(check.status);
+          expect(typeof check.message).toBe('string');
+        }
+      },
+      timeout,
+    );
 
     it('returns a valid RepairResult from repair()', async () => {
       const checkName = 'non-existent-check';

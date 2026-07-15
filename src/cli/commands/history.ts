@@ -44,9 +44,12 @@ function formatTimestamp(iso: string): string {
 
 function healthColor(status: HistoryEntry['status']): (s: string) => string {
   switch (status) {
-    case 'healthy':   return theme.success;
-    case 'degraded':  return theme.warning;
-    case 'unhealthy': return theme.error;
+    case 'healthy':
+      return theme.success;
+    case 'degraded':
+      return theme.warning;
+    case 'unhealthy':
+      return theme.error;
   }
 }
 
@@ -93,7 +96,9 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
       const rawLast = options.last ?? '10';
       const parsedLast = parseInt(rawLast, 10);
       if (isNaN(parsedLast) || parsedLast < 1) {
-        console.error(`  ${theme.error(`✖ Invalid value for --last: "${rawLast}". Must be a positive integer.`)}`);
+        console.error(
+          `  ${theme.error(`✖ Invalid value for --last: "${rawLast}". Must be a positive integer.`)}`,
+        );
         process.exitCode = 1;
         return;
       }
@@ -103,8 +108,12 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
       try {
         all = historyStore.read();
       } catch (err) {
-        console.error(`  ${theme.error(`✖ Could not read history: ${err instanceof Error ? err.message : String(err)}`)}`);
-        console.error(`  ${theme.muted('The history file may be corrupted. Run')} ${chalk.white('devdoctor clean history')} ${theme.muted('to reset it.')}`);
+        console.error(
+          `  ${theme.error(`✖ Could not read history: ${err instanceof Error ? err.message : String(err)}`)}`,
+        );
+        console.error(
+          `  ${theme.muted('The history file may be corrupted. Run')} ${chalk.white('devdoctor clean history')} ${theme.muted('to reset it.')}`,
+        );
         process.exitCode = 1;
         return;
       }
@@ -126,27 +135,33 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
       if (entries.length === 0) {
         console.log(`  ${theme.muted('No history recorded yet.')}`);
         console.log();
-        console.log(`  ${theme.muted('Dev Doctor records a snapshot after every')} ${chalk.white('devdoctor doctor')} ${theme.muted('run.')}`);
-        console.log(`  ${theme.muted('Each snapshot captures your health score, check counts, and per-plugin status.')}`);
+        console.log(
+          `  ${theme.muted('Dev Doctor records a snapshot after every')} ${chalk.white('devdoctor doctor')} ${theme.muted('run.')}`,
+        );
+        console.log(
+          `  ${theme.muted('Each snapshot captures your health score, check counts, and per-plugin status.')}`,
+        );
         console.log();
-        console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor doctor')} ${theme.muted('to record your first entry.')}`);
+        console.log(
+          `  ${theme.muted('Run')} ${chalk.white('devdoctor doctor')} ${theme.muted('to record your first entry.')}`,
+        );
         console.log();
         return;
       }
 
       console.log(
         `  ${theme.muted('Showing last')} ${chalk.white(String(entries.length))} ` +
-        `${theme.muted('of')} ${chalk.white(String(all.length))} ${theme.muted('total run(s).')}`,
+          `${theme.muted('of')} ${chalk.white(String(all.length))} ${theme.muted('total run(s).')}`,
       );
       console.log();
 
       // Header row
       console.log(
         `  ${theme.muted('Date/Time'.padEnd(24))}` +
-        `${theme.muted('Score'.padEnd(7))}` +
-        `${theme.muted('Bar'.padEnd(32))}` +
-        `${theme.muted('Status'.padEnd(11))}` +
-        `${theme.muted('Checks')}`,
+          `${theme.muted('Score'.padEnd(7))}` +
+          `${theme.muted('Bar'.padEnd(32))}` +
+          `${theme.muted('Status'.padEnd(11))}` +
+          `${theme.muted('Checks')}`,
       );
       console.log(`  ${theme.muted('─'.repeat(85))}`);
 
@@ -160,8 +175,8 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
         const statusLabel = colorFn(entry.status.padEnd(9));
         const checksInfo = theme.muted(
           `${entry.passedChecks}/${entry.totalChecks}` +
-          (entry.failedChecks > 0 ? chalk.red(` ${entry.failedChecks}✗`) : '') +
-          (entry.warningChecks > 0 ? chalk.yellow(` ${entry.warningChecks}⚠`) : ''),
+            (entry.failedChecks > 0 ? chalk.red(` ${entry.failedChecks}✗`) : '') +
+            (entry.warningChecks > 0 ? chalk.yellow(` ${entry.warningChecks}⚠`) : ''),
         );
         const time = theme.muted(formatTimestamp(entry.timestamp).padEnd(23));
 
@@ -179,9 +194,7 @@ export function createHistoryCommand(historyStore: IHistoryStore): Command {
       console.log();
       console.log(`  ${hr(undefined, 48)}`);
       console.log();
-      console.log(
-        `  ${theme.muted('History file:')} ${chalk.white(FileHistoryStore.filePath)}`,
-      );
+      console.log(`  ${theme.muted('History file:')} ${chalk.white(FileHistoryStore.filePath)}`);
       console.log();
     });
 }

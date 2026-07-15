@@ -1,12 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runDiagnosticTasks } from './check-runner.js';
-import type { DiagnosticTask, DiagnosticCheck } from '../types/diagnostic.js';
+import type { DiagnosticTask } from '../types/diagnostic.js';
 
 describe('check-runner', () => {
   it('runs all tasks if no dependencies are defined', async () => {
     const tasks: DiagnosticTask[] = [
-      { name: 't1', label: 'T1', run: async () => ({ name: 't1', label: 'T1', status: 'pass', message: 'ok' }) },
-      { name: 't2', label: 'T2', run: async () => ({ name: 't2', label: 'T2', status: 'pass', message: 'ok' }) },
+      {
+        name: 't1',
+        label: 'T1',
+        run: async () => ({ name: 't1', label: 'T1', status: 'pass', message: 'ok' }),
+      },
+      {
+        name: 't2',
+        label: 'T2',
+        run: async () => ({ name: 't2', label: 'T2', status: 'pass', message: 'ok' }),
+      },
     ];
 
     const results = await runDiagnosticTasks(tasks);
@@ -16,30 +24,32 @@ describe('check-runner', () => {
   });
 
   it('skips dependent tasks if upstream dependency fails', async () => {
-    const runSpy = vi.fn().mockResolvedValue({ name: 't2', label: 'T2', status: 'pass', message: 'ok' });
+    const runSpy = vi
+      .fn()
+      .mockResolvedValue({ name: 't2', label: 'T2', status: 'pass', message: 'ok' });
 
     const tasks: DiagnosticTask[] = [
-      { 
-        name: 't1', 
-        label: 'T1', 
-        run: async () => ({ name: 't1', label: 'T1', status: 'fail', message: 'failed' }) 
+      {
+        name: 't1',
+        label: 'T1',
+        run: async () => ({ name: 't1', label: 'T1', status: 'fail', message: 'failed' }),
       },
-      { 
-        name: 't2', 
-        label: 'T2', 
-        dependsOn: ['t1'], 
-        run: runSpy 
+      {
+        name: 't2',
+        label: 'T2',
+        dependsOn: ['t1'],
+        run: runSpy,
       },
     ];
 
     const results = await runDiagnosticTasks(tasks);
-    
+
     expect(results).toHaveLength(2);
     expect(results[0].status).toBe('fail');
-    
+
     expect(results[1].status).toBe('skip');
     expect(results[1].message).toBe('Skipped (depends on t1)');
-    
+
     // The actual run function should never have been called!
     expect(runSpy).not.toHaveBeenCalled();
   });
@@ -47,8 +57,17 @@ describe('check-runner', () => {
   it('cascades skips through multiple layers of dependencies', async () => {
     const runSpy3 = vi.fn();
     const tasks: DiagnosticTask[] = [
-      { name: 't1', label: 'T1', run: async () => ({ name: 't1', label: 'T1', status: 'fail', message: 'failed' }) },
-      { name: 't2', label: 'T2', dependsOn: ['t1'], run: async () => ({ name: 't2', label: 'T2', status: 'pass', message: 'ok' }) },
+      {
+        name: 't1',
+        label: 'T1',
+        run: async () => ({ name: 't1', label: 'T1', status: 'fail', message: 'failed' }),
+      },
+      {
+        name: 't2',
+        label: 'T2',
+        dependsOn: ['t1'],
+        run: async () => ({ name: 't2', label: 'T2', status: 'pass', message: 'ok' }),
+      },
       { name: 't3', label: 'T3', dependsOn: ['t2'], run: runSpy3 },
     ];
 

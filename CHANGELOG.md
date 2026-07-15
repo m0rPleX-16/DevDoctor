@@ -7,6 +7,47 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.9] — 2026-07-15
+
+### Added
+
+- **Quality Automation (ESLint & Prettier)** — Integrated ESLint flat configuration (`eslint.config.js`) and Prettier (`.prettierrc`) alongside associated `"lint"` and `"format"` npm scripts in `package.json` to enforce codebase quality and formatting standards automatically.
+- **Core Audit Logger Abstractions (`src/core/types/audit-logger.ts`)** — Created domain types and interfaces (`IAuditLogger`, `AuditEntry`, `AuditAction`) and a default `nullAuditLogger` fallback directly within the Core layer, removing Core's direct dependency on the Infrastructure layer.
+- **Enriched Project Detector (`src/infra/system/project-detector.ts`)** — Re-implemented the project detector with $O(1)$ in-memory Set lookup caching directory lists via `fs.readdirSync`, upward climbing traversal (up to 5 folders or until home directory is met) to detect workspace context from subdirectories, and support for file extension wildcard patterns (e.g. `*.py`).
+- **Project Detector Tests (`src/infra/system/project-detector.test.ts`)** — Created comprehensive unit tests validating exact directory matches, parent directory traversal limits, and extension pattern lookups.
+
+### Changed
+
+- **Decoupled Architecture Boundaries** — Moved generic `PluginRegistry` from `src/plugins/plugin-registry.ts` to `src/core/plugin-registry.ts` and updated all relative import paths in 10 dependent files to fully isolate the Core layer.
+- **Config Cleanup** — Removed unused TSConfig path alias properties (`@core/*`, etc.) to clean up compile-time dependencies.
+- **README Documentation** — Documented the new quality automation scripts (`npm run lint` and `npm run format`) in the development commands list.
+
+### Fixed
+
+- **Pre-Existing Code Quality Issues** — Resolved 19 errors and 9 warnings reported by the linter, including cleaning up unused imports, correcting unpreserved error causes (by forwarding the caught error as a `{ cause }`), and fixing useless regex escapes.
+- **Robust Python Installation Parsing** — Corrected Python `--version` parsing regex to support 2-digit Python versions (like Python 3.12) without misidentifying them as Python 2 EOL, and added a corresponding unit test suite `installation-check.test.ts`.
+- **Cross-Platform MySQL Config Paths** — Added Unix MySQL configuration paths (`MYSQL_CONFIG_PATHS_UNIX`) and tilde expansion to allow proper config file checks on macOS and Linux systems.
+- **Cross-Platform MySQL Log Hostname** — Used `os.hostname()` instead of Windows-only `process.env.COMPUTERNAME` to locate fallback database error logs on non-Windows platforms.
+- **Dynamic Venv Suggestion Folder** — Updated manual activation suggestions to dynamically use the actual folder name of the detected virtual environment (`venv` or `.venv`) instead of hardcoding `.venv`.
+
+---
+
+## [0.4.8] — 2026-07-14
+
+### Added
+
+- **GitHub Repository Link in CLI Banner (`src/cli/ui/banner.ts`)** — Displays a clickable link to the official repository (`https://github.com/m0rPleX-16/DevDoctor`) inside the decorative CLI welcome banner box, making it easy for users to find the source code, open issues, and reference documentation.
+- **Interactive "Shell completions" menu option (`src/cli/ui/interactive.ts`)** — Adds a "⇥ Shell completions" entry to the interactive TTY main menu with a choice prompt mapping to the supported shells (`bash`, `zsh`, `fish`, `pwsh`). Generates and prints the tab-completion script to stdout, making it easy for users to set up completion without memorizing CLI flags.
+- **Global Quiet Mode Support in TTY Loop (`src/cli/index.ts`)** — Running `devdoctor --quiet` or `devdoctor -q` from an interactive TTY terminal now launches the menu loop in quiet mode (suppressing the header banner and color styles) rather than immediately exiting to command help.
+- **`mysql-port` repair — auto-elevation fallback** — When `taskkill` (Windows) or `kill` (Unix) fails due to insufficient privileges, the repair now automatically retries with `runElevatedCommand` (UAC prompt on Windows, `sudo` on Unix) instead of returning a failure message. Error detection covers `"Access is denied"` / exit code 5 on Windows and `"Operation not permitted"` on Unix. The three other elevation-aware MySQL paths (`repair mysql-service`, `rollback mysql-service`, `rollback xampp-process`) already used this pattern — this closes the remaining gap.
+- **`completion pwsh` — fix broken context-aware tab completion** — The PowerShell completion script rendered `'s+'` instead of `'\s+'` due to `\s` being silently consumed as a JavaScript escape sequence inside the template literal. The token-splitting regex never matched whitespace, so `$subCmd` was always empty and the switch always fell through to `default` — meaning Tab after `devdoctor diagnose` returned the full command list instead of plugin names. Fixed by double-escaping to `'\\s+'` in source.
+
+### Changed
+
+- **`README.md` documentation** — Added `Completion` command row to the interactive prompts table and bumped documented version to `0.4.8`.
+
+---
+
 ## [0.4.7] — 2026-07-14
 
 ### Added
@@ -366,6 +407,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Release workflow** — Automated binary builds and GitHub Packages npm publish on version tags.
 - **ADR-0001 through ADR-0008** — Architecture Decision Records covering TypeScript, Clean Architecture, plugin architecture, repair/rollback strategy, configuration system, dynamic plugin loading, reporting strategy, and packaging.
 
+[0.4.8]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/m0rPleX-16/DevDoctor/compare/v0.4.4...v0.4.5

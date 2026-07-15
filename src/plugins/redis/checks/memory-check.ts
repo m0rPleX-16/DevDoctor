@@ -21,7 +21,10 @@ export async function checkRedisMemory(port = 6379): Promise<DiagnosticCheck> {
 
   const lines = result.stdout.split('\n');
   const get = (key: string): string | undefined =>
-    lines.find((l) => l.startsWith(key + ':'))?.split(':')[1]?.trim();
+    lines
+      .find((l) => l.startsWith(key + ':'))
+      ?.split(':')[1]
+      ?.trim();
 
   const usedBytes = parseInt(get('used_memory') ?? '0', 10);
   const maxMemoryBytes = parseInt(get('maxmemory') ?? '0', 10);

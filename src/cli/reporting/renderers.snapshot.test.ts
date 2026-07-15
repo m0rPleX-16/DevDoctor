@@ -40,7 +40,8 @@ const diagResultPass: DiagnosticResult = {
       label: 'Node.js Version',
       status: 'pass',
       message: 'Node.js v22.0.0 is installed. (LTS)',
-      detail: 'Node.js v22 is a Long Term Support release. LTS versions receive security updates for 30 months.',
+      detail:
+        'Node.js v22 is a Long Term Support release. LTS versions receive security updates for 30 months.',
     },
     {
       name: 'npm-version',

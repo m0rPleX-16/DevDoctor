@@ -18,15 +18,13 @@ import chalk from 'chalk';
 import { scanEnvironment } from '../../infra/system/env-scanner.js';
 import { showCompactBanner } from '../ui/banner.js';
 import { createSpinner } from '../ui/spinner.js';
+import { theme, hr, sectionHeader, connector, statusBadge } from '../ui/formatter.js';
 import {
-  theme,
-  hr,
-  sectionHeader,
-  field,
-  connector,
-  statusBadge,
-} from '../ui/formatter.js';
-import { ENV_CATEGORY_LABELS, type EnvCategory, type EnvVariable, type EnvSecurityRisk } from '../../core/types/environment.js';
+  ENV_CATEGORY_LABELS,
+  type EnvCategory,
+  type EnvVariable,
+  type EnvSecurityRisk,
+} from '../../core/types/environment.js';
 
 /** Icons for each environment category */
 const CATEGORY_ICONS: Record<EnvCategory, string> = {
@@ -51,9 +49,8 @@ function renderVariable(v: EnvVariable, showDescription: boolean): void {
     : theme.error('not set');
 
   const badge = v.value !== undefined ? statusBadge('pass') : statusBadge('skip');
-  const importantTag = v.important && v.value === undefined
-    ? ` ${theme.warning('(recommended)')}`
-    : '';
+  const importantTag =
+    v.important && v.value === undefined ? ` ${theme.warning('(recommended)')}` : '';
 
   console.log(`  ${theme.muted('│')}  ${badge}  ${nameStyle(v.name)}${importantTag}`);
   console.log(`  ${theme.muted('│')}     ${valueText}`);
@@ -72,7 +69,9 @@ function renderPath(entries: Array<{ path: string; index: number; exists: boolea
   console.log();
   console.log(sectionHeader('PATH Entries', theme.primary('☰')));
   console.log(connector());
-  console.log(`  ${theme.muted('│')}  ${theme.muted(`${entries.length} directories · Priority: top = highest`)}`);
+  console.log(
+    `  ${theme.muted('│')}  ${theme.muted(`${entries.length} directories · Priority: top = highest`)}`,
+  );
   console.log(connector());
 
   for (const entry of entries) {
@@ -87,8 +86,12 @@ function renderPath(entries: Array<{ path: string; index: number; exists: boolea
   const missing = entries.filter((e) => !e.exists);
   if (missing.length > 0) {
     console.log(connector());
-    console.log(`  ${theme.muted('│')}  ${theme.warning(`⚠ ${missing.length} PATH entries point to directories that don't exist.`)}`);
-    console.log(`  ${theme.muted('│')}  ${theme.muted('Missing entries can slow down command lookups and cause confusion.')}`);
+    console.log(
+      `  ${theme.muted('│')}  ${theme.warning(`⚠ ${missing.length} PATH entries point to directories that don't exist.`)}`,
+    );
+    console.log(
+      `  ${theme.muted('│')}  ${theme.muted('Missing entries can slow down command lookups and cause confusion.')}`,
+    );
   }
 }
 
@@ -100,7 +103,9 @@ function renderSecurityRisks(risks: EnvSecurityRisk[]): void {
   console.log();
   console.log(sectionHeader('Security Risks', theme.error('⚠')));
   console.log(connector());
-  console.log(`  ${theme.muted('│')}  ${theme.warning(`${risks.length} risk(s) detected in your environment.`)}`);
+  console.log(
+    `  ${theme.muted('│')}  ${theme.warning(`${risks.length} risk(s) detected in your environment.`)}`,
+  );
   console.log(connector());
 
   for (const risk of risks) {
@@ -145,7 +150,9 @@ export function createEnvCommand(): Command {
       console.log();
       console.log(`  ${hr('Environment', 48)}`);
       console.log();
-      console.log(`  ${theme.muted(`${envInfo.totalVarCount} total variables · showing ${options.all ? 'all' : 'dev-relevant'}`)}`);
+      console.log(
+        `  ${theme.muted(`${envInfo.totalVarCount} total variables · showing ${options.all ? 'all' : 'dev-relevant'}`)}`,
+      );
 
       // PATH-only mode
       if (options.path) {
@@ -169,7 +176,15 @@ export function createEnvCommand(): Command {
       }
 
       // Render each category
-      const categoryOrder: EnvCategory[] = ['system', 'node', 'java', 'python', 'docker', 'git', 'other'];
+      const categoryOrder: EnvCategory[] = [
+        'system',
+        'node',
+        'java',
+        'python',
+        'docker',
+        'git',
+        'other',
+      ];
 
       for (const category of categoryOrder) {
         const vars = grouped.get(category);
@@ -200,8 +215,12 @@ export function createEnvCommand(): Command {
       console.log();
 
       if (!options.all) {
-        console.log(`  ${theme.muted('Tip: Use')} ${chalk.white('--all')} ${theme.muted('to see all environment variables.')}`);
-        console.log(`  ${theme.muted('     Use')} ${chalk.white('--path')} ${theme.muted('to see only the PATH breakdown.')}`);
+        console.log(
+          `  ${theme.muted('Tip: Use')} ${chalk.white('--all')} ${theme.muted('to see all environment variables.')}`,
+        );
+        console.log(
+          `  ${theme.muted('     Use')} ${chalk.white('--path')} ${theme.muted('to see only the PATH breakdown.')}`,
+        );
         console.log();
       }
     });

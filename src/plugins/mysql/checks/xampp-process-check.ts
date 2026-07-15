@@ -151,11 +151,10 @@ export async function checkXamppProcess(
           `It must be started as a standalone process.\n\n` +
           `Dev Doctor can start it automatically by running mysqld with the ` +
           `--defaults-file flag pointing to my.ini.`,
-        suggestion:
-          isWindows
-            ? `Run: devdoctor fix mysql  (will start ${mysqldPath} as a background process)\n` +
-              `Or: Open the XAMPP Control Panel and click "Start" next to MySQL.`
-            : `Run: sudo ${mysqldPath} --user=mysql`,
+        suggestion: isWindows
+          ? `Run: devdoctor fix mysql  (will start ${mysqldPath} as a background process)\n` +
+            `Or: Open the XAMPP Control Panel and click "Start" next to MySQL.`
+          : `Run: sudo ${mysqldPath} --user=mysql`,
       },
       mysqldPath,
       runningPids: [],

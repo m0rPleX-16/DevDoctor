@@ -86,7 +86,8 @@ SERVICE_NAME: MySQL80
       command: 'sc',
       args: ['query', 'MySQL80'],
       stdout: '',
-      stderr: '[SC] EnumQueryServicesStatus:An error occurred (1060): The specified service does not exist as an installed service.',
+      stderr:
+        '[SC] EnumQueryServicesStatus:An error occurred (1060): The specified service does not exist as an installed service.',
       exitCode: 1,
       success: false,
       durationMs: 5,

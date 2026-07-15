@@ -58,9 +58,7 @@ export async function checkMysqlLog(logErrorPath?: string): Promise<DiagnosticCh
   }
 
   // Format error list for display
-  const errorSnippet = result.matchedErrors
-    .map((line) => `  - ${line}`)
-    .join('\n');
+  const errorSnippet = result.matchedErrors.map((line) => `  - ${line}`).join('\n');
 
   return {
     name: 'mysql-log',
@@ -73,7 +71,6 @@ export async function checkMysqlLog(logErrorPath?: string): Promise<DiagnosticCh
       `${errorSnippet}\n\n` +
       `Check these lines to identify if they correspond to database crashes or ` +
       `missing storage tables.`,
-    suggestion:
-      `Open the error log file at "${logErrorPath}" to inspect full stack traces and context.`,
+    suggestion: `Open the error log file at "${logErrorPath}" to inspect full stack traces and context.`,
   };
 }

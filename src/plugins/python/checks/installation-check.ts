@@ -21,10 +21,11 @@ export async function checkPythonInstallation(): Promise<PythonInstallInfo> {
     if (result.success) {
       // Python 3 prints to stdout; Python 2 prints to stderr
       const raw = (result.stdout || result.stderr).trim();
-      // "Python 3.11.4"
-      const versionMatch = raw.match(/Python\s+(\d+\.\d+\.\d+)/i);
+      // "Python 3.11.4", "Python 3.12", or "Python 3"
+      const versionMatch = raw.match(/Python\s+(\d+(?:\.\d+)*[\w.-]*)/i);
       const version = versionMatch ? versionMatch[1] : raw;
-      const major = versionMatch ? parseInt(versionMatch[1].split('.')[0], 10) : 0;
+      const majorMatch = raw.match(/Python\s+(\d+)/i);
+      const major = majorMatch ? parseInt(majorMatch[1], 10) : 0;
 
       if (major < 3) {
         return {

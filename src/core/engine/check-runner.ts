@@ -18,12 +18,14 @@ export async function runDiagnosticTasks(tasks: DiagnosticTask[]): Promise<Diagn
 
   // A simple way to handle DAG execution is to loop until no more tasks can be processed.
   let remaining = [...tasks];
-  
+
   while (remaining.length > 0) {
     const processable = remaining.filter((task) => {
       // A task is processable if all its dependencies are either completed or known to have failed
       if (!task.dependsOn || task.dependsOn.length === 0) return true;
-      return task.dependsOn.every((dep) => completedNames.has(dep) || failedDependencyNames.has(dep));
+      return task.dependsOn.every(
+        (dep) => completedNames.has(dep) || failedDependencyNames.has(dep),
+      );
     });
 
     if (processable.length === 0) {
@@ -45,7 +47,7 @@ export async function runDiagnosticTasks(tasks: DiagnosticTask[]): Promise<Diagn
     await Promise.all(
       processable.map(async (task) => {
         const dependsOn = task.dependsOn || [];
-        
+
         // Did any dependency fail?
         const failedDeps = dependsOn.filter((dep) => failedDependencyNames.has(dep));
 
@@ -63,7 +65,7 @@ export async function runDiagnosticTasks(tasks: DiagnosticTask[]): Promise<Diagn
           try {
             const result = await task.run();
             results[task.name] = result;
-            
+
             // If the task itself failed, warn, or skipped, dependents shouldn't run.
             // Only 'pass' allows dependents to run.
             if (result.status === 'pass') {
@@ -82,7 +84,7 @@ export async function runDiagnosticTasks(tasks: DiagnosticTask[]): Promise<Diagn
             failedDependencyNames.add(task.name);
           }
         }
-      })
+      }),
     );
 
     // Remove processed tasks from remaining list

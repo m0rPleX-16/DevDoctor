@@ -47,8 +47,22 @@ const diagResult: DiagnosticResult = {
 const doctorResult: DoctorResult = {
   diagnostics: [diagResult],
   tools: [
-    { name: 'Git', command: 'git', version: '2.43.0', path: '/usr/bin/git', installed: true, category: 'version-control' },
-    { name: 'Docker', command: 'docker', version: undefined, path: undefined, installed: false, category: 'container' },
+    {
+      name: 'Git',
+      command: 'git',
+      version: '2.43.0',
+      path: '/usr/bin/git',
+      installed: true,
+      category: 'version-control',
+    },
+    {
+      name: 'Docker',
+      command: 'docker',
+      version: undefined,
+      path: undefined,
+      installed: false,
+      category: 'container',
+    },
   ],
   health: {
     percentage: 33,

@@ -56,15 +56,15 @@ describe('NodePlugin Repairs', () => {
       // but allow all other existsSync calls to proceed normally.
       const nvmDir = path.join(os.homedir(), '.nvm');
       const existsSpy = vi.spyOn(fs, 'existsSync').mockImplementation((p) => {
-        if (p === nvmDir) return false;           // no nvm
-        if (typeof p === 'string' && p.includes('nvm')) return false;  // no nvm-windows
-        return true;                              // devdoctor dir + target prefix exist
+        if (p === nvmDir) return false; // no nvm
+        if (typeof p === 'string' && p.includes('nvm')) return false; // no nvm-windows
+        return true; // devdoctor dir + target prefix exist
       });
-      const writeSpy  = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-      const mkdirSpy  = vi.spyOn(fs, 'mkdirSync').mockImplementation(() => ({} as any));
+      const writeSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+      const mkdirSpy = vi.spyOn(fs, 'mkdirSync').mockImplementation(() => ({}) as any);
 
       // Also clear NVM_DIR / NVM_HOME from env for the duration of this test
-      const savedNvmDir  = process.env.NVM_DIR;
+      const savedNvmDir = process.env.NVM_DIR;
       const savedNvmHome = process.env.NVM_HOME;
       delete process.env.NVM_DIR;
       delete process.env.NVM_HOME;
@@ -80,7 +80,7 @@ describe('NodePlugin Repairs', () => {
       expect(writeSpy).toHaveBeenCalledWith(
         expect.stringContaining('npm-rollback-prefix.txt'),
         '/usr/local',
-        'utf-8'
+        'utf-8',
       );
 
       writeSpy.mockRestore();
@@ -90,7 +90,7 @@ describe('NodePlugin Repairs', () => {
 
     it('should rollback to saved prefix if rollback file exists', async () => {
       const rollbackFile = path.join(os.homedir(), '.devdoctor', 'npm-rollback-prefix.txt');
-      
+
       const existsSpy = vi.spyOn(fs, 'existsSync').mockImplementation((p) => p === rollbackFile);
       const readSpy = vi.spyOn(fs, 'readFileSync').mockReturnValue('/usr/local');
       const unlinkSpy = vi.spyOn(fs, 'unlinkSync').mockImplementation(() => {});

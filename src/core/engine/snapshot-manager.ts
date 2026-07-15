@@ -33,12 +33,12 @@ export class SnapshotManager {
    */
   recordRepair(plugin: string, checkName: string): void {
     let manifest: SnapshotManifest = { version: 1, repairs: [] };
-    
+
     if (fs.existsSync(this.snapshotPath)) {
       try {
         const data = fs.readFileSync(this.snapshotPath, 'utf-8');
         manifest = JSON.parse(data) as SnapshotManifest;
-      } catch (e) {
+      } catch {
         // Corrupted snapshot, start fresh
       }
     } else {

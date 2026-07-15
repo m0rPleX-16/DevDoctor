@@ -13,7 +13,7 @@ import { runCommand } from '../os/command-runner.js';
 async function getWindowsProcessName(pid: number): Promise<string | undefined> {
   const result = await runCommand('tasklist', ['/fi', `PID eq ${pid}`, '/nh']);
   if (!result.success) return undefined;
-  
+
   // tasklist outputs: "mysqld.exe                   1234 Services                   0     45,212 K"
   const tokens = result.stdout.trim().split(/\s+/);
   if (tokens.length > 0 && tokens[0] !== 'No' && tokens[0] !== '') {
