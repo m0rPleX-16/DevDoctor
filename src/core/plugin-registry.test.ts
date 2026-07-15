@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PluginRegistry } from '../plugins/plugin-registry.js';
+import { PluginRegistry } from './plugin-registry.js';
 import type { Plugin } from '../core/types/plugin.js';
 import type { DiagnosticResult } from '../core/types/diagnostic.js';
 
@@ -53,9 +53,7 @@ describe('PluginRegistry', () => {
 
       registry.register(plugin1);
 
-      expect(() => registry.register(plugin2)).toThrow(
-        'Plugin "node" is already registered',
-      );
+      expect(() => registry.register(plugin2)).toThrow('Plugin "node" is already registered');
     });
 
     it('should register multiple plugins with different names', () => {

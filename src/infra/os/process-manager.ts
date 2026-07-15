@@ -58,7 +58,7 @@ export interface ProcessInfo {
  * @returns true if the name is safe to use in the filter
  */
 function isValidWindowsProcessName(processName: string): boolean {
-  return /^[\w.\-]+\.exe$/i.test(processName);
+  return /^[\w.-]+\.exe$/i.test(processName);
 }
 
 // ── Spawn ─────────────────────────────────────────────────────────
@@ -77,17 +77,13 @@ function isValidWindowsProcessName(processName: string): boolean {
  * @param args        - Arguments to pass
  * @param cwd         - Working directory for the process
  */
-export function spawnDetached(
-  executable: string,
-  args: string[] = [],
-  cwd?: string,
-): SpawnResult {
+export function spawnDetached(executable: string, args: string[] = [], cwd?: string): SpawnResult {
   try {
     const child = spawn(executable, args, {
       detached: true,
-      stdio: 'ignore',    // Don't inherit stdio — daemon has no terminal
+      stdio: 'ignore', // Don't inherit stdio — daemon has no terminal
       cwd,
-      windowsHide: true,  // Don't flash a console window on Windows
+      windowsHide: true, // Don't flash a console window on Windows
     });
 
     // Detach the child from the parent's event loop.
@@ -197,9 +193,7 @@ async function findWindowsProcess(processName: string): Promise<ProcessInfo> {
   // ADR-0009: Validate the process name before interpolating into the tasklist filter.
   // Invalid names (containing metacharacters or not ending in .exe) are rejected early.
   if (!isValidWindowsProcessName(processName)) {
-    console.warn(
-      `[devdoctor] Unsafe process name rejected for tasklist query: "${processName}"`,
-    );
+    console.warn(`[devdoctor] Unsafe process name rejected for tasklist query: "${processName}"`);
     return { running: false, pids: [], processName };
   }
 

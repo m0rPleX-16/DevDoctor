@@ -77,7 +77,9 @@ export async function scanLogFile(
       filePath,
       exists: true,
       totalLines: 0,
-      recentLines: [`[Dev Doctor] Error reading file: ${error instanceof Error ? error.message : String(error)}`],
+      recentLines: [
+        `[Dev Doctor] Error reading file: ${error instanceof Error ? error.message : String(error)}`,
+      ],
       matchedErrors: [],
     };
   }

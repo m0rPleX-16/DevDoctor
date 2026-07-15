@@ -9,7 +9,11 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { collectSystemInfo, formatBytes, formatUptime } from '../../infra/system/system-info-collector.js';
+import {
+  collectSystemInfo,
+  formatBytes,
+  formatUptime,
+} from '../../infra/system/system-info-collector.js';
 import { detectProjectContext } from '../../infra/system/project-detector.js';
 import { createSpinner } from '../ui/spinner.js';
 import { showCompactBanner } from '../ui/banner.js';
@@ -33,7 +37,7 @@ interface InfoOptions {
  * @returns The configured Commander command
  */
 export function createInfoCommand(
-  registry?: import('../../plugins/plugin-registry.js').PluginRegistry,
+  registry?: import('../../core/plugin-registry.js').PluginRegistry,
 ): Command {
   return new Command('info')
     .description('Display system and environment information.')
@@ -88,7 +92,9 @@ export function createInfoCommand(
       console.log(field('Used', formatBytes(info.memory.usedBytes)));
       console.log(field('Free', formatBytes(info.memory.freeBytes)));
       console.log(connector());
-      console.log(`  ${theme.muted('│')}  ${theme.muted('Usage'.padEnd(14))} ${progressBar(info.memory.usagePercent)}`);
+      console.log(
+        `  ${theme.muted('│')}  ${theme.muted('Usage'.padEnd(14))} ${progressBar(info.memory.usagePercent)}`,
+      );
 
       // Runtime section
       console.log();
@@ -119,7 +125,9 @@ export function createInfoCommand(
         if (missing.length > 0) {
           for (const tool of missing) {
             const badge = statusBadge('skip');
-            console.log(`  ${theme.muted('│')}  ${badge}  ${theme.muted(tool.name)}  ${theme.muted('not found')}`);
+            console.log(
+              `  ${theme.muted('│')}  ${badge}  ${theme.muted(tool.name)}  ${theme.muted('not found')}`,
+            );
           }
         }
       }
@@ -133,20 +141,22 @@ export function createInfoCommand(
           console.log();
           console.log(sectionHeader('Project Context', theme.accent('◈')));
           console.log(connector());
-          console.log(`  ${theme.muted('│')}  ${theme.muted(`Detected in ${chalk.white(process.cwd())}`)}`);
+          console.log(
+            `  ${theme.muted('│')}  ${theme.muted(`Detected in ${chalk.white(process.cwd())}`)}`,
+          );
           console.log(connector());
           for (const [pluginName, markers] of Object.entries(projectCtx.matchedMarkers)) {
             const plugin = allPlugins.find((p) => p.name === pluginName);
             const displayName = plugin?.displayName ?? pluginName;
             console.log(
               `  ${theme.muted('│')}  ${statusBadge('pass')}  ${chalk.white(displayName)}` +
-              `  ${theme.muted(`(${markers.join(', ')})`)}`,
+                `  ${theme.muted(`(${markers.join(', ')})`)}`,
             );
           }
           console.log(connector());
           console.log(
             `  ${theme.muted('│')}  ${theme.muted('Run')} ${chalk.white('devdoctor doctor')} ` +
-            `${theme.muted('to diagnose all detected plugins.')}`,
+              `${theme.muted('to diagnose all detected plugins.')}`,
           );
         }
       }
@@ -156,4 +166,3 @@ export function createInfoCommand(
       console.log();
     });
 }
-

@@ -16,7 +16,7 @@
  */
 
 import readline from 'node:readline';
-import { theme, statusBadge } from './formatter.js';
+import { theme } from './formatter.js';
 import chalk from 'chalk';
 
 // ── Menu items ────────────────────────────────────────────────────
@@ -87,6 +87,12 @@ function buildMenuItems(pluginNames: string[]): MenuItem[] {
       args: ['clean'],
     },
     {
+      icon: theme.accent('⇥'),
+      label: 'Shell completions',
+      description: 'completion — generate shell tab-completion scripts',
+      args: ['completion'],
+    },
+    {
       icon: theme.error('×'),
       label: 'Exit',
       description: 'exit — quit the interactive Dev Doctor CLI',
@@ -109,25 +115,21 @@ function renderMenu(items: MenuItem[], selected: number): void {
     const item = items[i];
     const isSelected = i === selected;
 
-    const cursor = isSelected
-      ? chalk.hex('#36BCF7')('❯')
-      : theme.muted(' ');
+    const cursor = isSelected ? chalk.hex('#36BCF7')('❯') : theme.muted(' ');
 
     const icon = item.icon;
-    const label = isSelected
-      ? chalk.hex('#36BCF7').bold(item.label)
-      : chalk.white(item.label);
+    const label = isSelected ? chalk.hex('#36BCF7').bold(item.label) : chalk.white(item.label);
 
-    const desc = isSelected
-      ? theme.muted(`  ${item.description}`)
-      : '';
+    const desc = isSelected ? theme.muted(`  ${item.description}`) : '';
 
     lines.push(`  ${cursor}  ${icon}  ${label}`);
     if (desc) lines.push(`        ${desc}`);
   }
 
   lines.push('');
-  lines.push(`  ${theme.muted('Tip: Run')} ${chalk.white('devdoctor --help')} ${theme.muted('or')} ${chalk.white('devdoctor <command> --help')} ${theme.muted('for advanced flags.')}`);
+  lines.push(
+    `  ${theme.muted('Tip: Run')} ${chalk.white('devdoctor --help')} ${theme.muted('or')} ${chalk.white('devdoctor <command> --help')} ${theme.muted('for advanced flags.')}`,
+  );
   lines.push('');
 
   process.stdout.write(lines.join('\n') + '\n');
@@ -157,10 +159,7 @@ function lineCount(items: MenuItem[], selected: number): number {
 // ── Plugin sub-menu ───────────────────────────────────────────────
 
 /** Prompt user to pick a plugin from a simple numbered list. Returns null if aborted. */
-async function pickPlugin(
-  pluginNames: string[],
-  verb: string,
-): Promise<string | null> {
+async function pickPlugin(pluginNames: string[], verb: string): Promise<string | null> {
   return new Promise((resolve) => {
     process.stdout.write('\n');
     process.stdout.write(`  ${theme.muted(`Which plugin would you like to ${verb}?`)}\n\n`);
@@ -246,7 +245,9 @@ async function pickPlugin(
  */
 async function askYesNo(question: string): Promise<boolean | null> {
   return new Promise((resolve) => {
-    process.stdout.write(`  ${theme.primary('›')}  ${chalk.white(question)} ${theme.muted('(y/N): ')}`);
+    process.stdout.write(
+      `  ${theme.primary('›')}  ${chalk.white(question)} ${theme.muted('(y/N): ')}`,
+    );
 
     process.stdin.setRawMode(true);
     process.stdin.resume();
@@ -280,7 +281,10 @@ async function askYesNo(question: string): Promise<boolean | null> {
  * Ask the user to pick from a short list of labelled options using number keys.
  * Returns the chosen value string, or null if Esc was pressed.
  */
-async function askChoice(question: string, choices: Array<{ key: string; label: string; value: string }>): Promise<string | null> {
+async function askChoice(
+  question: string,
+  choices: Array<{ key: string; label: string; value: string }>,
+): Promise<string | null> {
   return new Promise((resolve) => {
     process.stdout.write(`\n  ${theme.primary('›')}  ${chalk.white(question)}\n\n`);
     for (const c of choices) {
@@ -354,8 +358,8 @@ async function askFixOptions(): Promise<string[]> {
 async function askDoctorOptions(): Promise<string[]> {
   const format = await askChoice('Output format?', [
     { key: '1', label: 'terminal  — colour dashboard (default)', value: 'terminal' },
-    { key: '2', label: 'json      — machine-readable JSON',      value: 'json'     },
-    { key: '3', label: 'markdown  — GitHub-Flavoured Markdown',  value: 'markdown' },
+    { key: '2', label: 'json      — machine-readable JSON', value: 'json' },
+    { key: '3', label: 'markdown  — GitHub-Flavoured Markdown', value: 'markdown' },
   ]);
   if (!format || format === 'terminal') return [];
   return ['--format', format];
@@ -368,7 +372,7 @@ async function askDoctorOptions(): Promise<string[]> {
 async function askInfoOptions(): Promise<string[]> {
   const format = await askChoice('Output format?', [
     { key: '1', label: 'terminal  — styled display (default)', value: 'terminal' },
-    { key: '2', label: 'json      — machine-readable JSON',    value: 'json'     },
+    { key: '2', label: 'json      — machine-readable JSON', value: 'json' },
   ]);
   if (!format || format === 'terminal') return [];
   return ['--format', format];
@@ -395,10 +399,10 @@ async function askEnvOptions(): Promise<string[]> {
  */
 async function askHistoryOptions(): Promise<string[]> {
   const count = await askChoice('How many recent runs would you like to see?', [
-    { key: '1', label: 'Last 10   (default)', value: '10'  },
-    { key: '2', label: 'Last 25',             value: '25'  },
-    { key: '3', label: 'Last 50',             value: '50'  },
-    { key: '4', label: 'Last 100',            value: '100' },
+    { key: '1', label: 'Last 10   (default)', value: '10' },
+    { key: '2', label: 'Last 25', value: '25' },
+    { key: '3', label: 'Last 50', value: '50' },
+    { key: '4', label: 'Last 100', value: '100' },
   ]);
   if (!count || count === '10') return [];
   return ['--last', count];
@@ -410,7 +414,9 @@ async function askHistoryOptions(): Promise<string[]> {
  */
 async function askCheckName(): Promise<string | null> {
   return new Promise((resolve) => {
-    process.stdout.write(`\n  ${theme.muted('Enter the check name to roll back (e.g. mysql-service): ')}`);
+    process.stdout.write(
+      `\n  ${theme.muted('Enter the check name to roll back (e.g. mysql-service): ')}`,
+    );
 
     process.stdin.setRawMode(true);
     process.stdin.resume();
@@ -465,8 +471,8 @@ async function askCheckName(): Promise<string | null> {
  * Used to guide the user in the rollback interactive flow.
  */
 const ROLLBACK_SUPPORTED_CHECKS: Record<string, string[]> = {
-  mysql:  ['mysql-service', 'xampp-process'],
-  node:   ['node-permissions'],
+  mysql: ['mysql-service', 'xampp-process'],
+  node: ['node-permissions'],
   python: ['python-venv'],
 };
 
@@ -482,8 +488,16 @@ async function askRollbackOptions(
 ): Promise<string[] | null> {
   // First ask: session rollback vs specific check
   const mode = await askChoice('What would you like to roll back?', [
-    { key: '1', label: 'Last session   — undo all repairs from the last fix run', value: 'session' },
-    { key: '2', label: 'Specific check — undo one repair for a particular plugin', value: 'specific' },
+    {
+      key: '1',
+      label: 'Last session   — undo all repairs from the last fix run',
+      value: 'session',
+    },
+    {
+      key: '2',
+      label: 'Specific check — undo one repair for a particular plugin',
+      value: 'specific',
+    },
   ]);
 
   if (!mode) return null;
@@ -526,7 +540,6 @@ async function askRollbackOptions(
   return [...baseArgv, 'rollback', plugin, checkName, ...flags];
 }
 
-
 /**
  * Gather interactive options for the `clean` command.
  * Returns the sub-command argv to dispatch, or null if the user pressed Esc.
@@ -534,19 +547,34 @@ async function askRollbackOptions(
 async function askCleanOptions(baseArgv: string[]): Promise<string[] | null> {
   const sub = await askChoice('What would you like to clean?', [
     { key: '1', label: 'snapshot — repair session snapshot (used by rollback)', value: 'snapshot' },
-    { key: '2', label: 'history  — doctor run history (health score timeline)',  value: 'history'  },
-    { key: '3', label: 'audit    — repair audit log',                             value: 'audit'    },
-    { key: '4', label: 'lock     — stale fix.lock file',                          value: 'lock'     },
-    { key: '5', label: 'all      — remove all of the above',                      value: 'all'      },
+    { key: '2', label: 'history  — doctor run history (health score timeline)', value: 'history' },
+    { key: '3', label: 'audit    — repair audit log', value: 'audit' },
+    { key: '4', label: 'lock     — stale fix.lock file', value: 'lock' },
+    { key: '5', label: 'all      — remove all of the above', value: 'all' },
   ]);
   if (!sub) return null; // Esc → return to main menu, never default to 'all'
   return [...baseArgv, 'clean', sub];
 }
+
+/**
+ * Gather interactive options for the `completion` command.
+ * Returns the sub-command argv to dispatch, or null if the user pressed Esc.
+ */
+async function askCompletionOptions(baseArgv: string[]): Promise<string[] | null> {
+  const shell = await askChoice('Which shell would you like to generate completions for?', [
+    { key: '1', label: 'bash — Bash shell script', value: 'bash' },
+    { key: '2', label: 'zsh  — Zsh shell script', value: 'zsh' },
+    { key: '3', label: 'fish — Fish shell script', value: 'fish' },
+    { key: '4', label: 'pwsh — PowerShell script', value: 'pwsh' },
+  ]);
+  if (!shell) return null;
+  return [...baseArgv, 'completion', shell];
+}
 async function askConfigOptions(): Promise<string[]> {
   const sub = await askChoice('What would you like to do?', [
     { key: '1', label: 'init — scaffold devdoctor.json in current directory', value: 'init' },
-    { key: '2', label: 'show — display the resolved configuration',           value: 'show' },
-    { key: '3', label: 'path — print config file paths',                      value: 'path' },
+    { key: '2', label: 'show — display the resolved configuration', value: 'show' },
+    { key: '3', label: 'path — print config file paths', value: 'path' },
   ]);
   if (!sub) return ['config', 'show']; // default to show
   return ['config', sub];
@@ -667,6 +695,17 @@ export async function runInteractiveMenu(
             return;
           }
           resolve(argv);
+        } else if (item.args[0] === 'completion') {
+          const argv = await askCompletionOptions(baseArgv);
+          if (!argv) {
+            // User bailed — restart menu
+            process.stdin.setRawMode(true);
+            rendered = false;
+            render();
+            process.stdin.on('data', onKey);
+            return;
+          }
+          resolve(argv);
         } else if (item.args[0] === 'exit') {
           resolve(null);
         } else {
@@ -720,4 +759,3 @@ export async function waitReturnToMenu(): Promise<void> {
     process.stdin.on('data', onKey);
   });
 }
-

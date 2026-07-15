@@ -26,13 +26,7 @@ import type { ResolvedConfig } from '../../core/types/config.js';
 import { createRenderer, writeReport } from '../reporting/renderer-factory.js';
 import { createSpinner } from '../ui/spinner.js';
 import { showCompactBanner } from '../ui/banner.js';
-import {
-  theme,
-  hr,
-  statusBadge,
-  statusColor,
-  statusLine,
-} from '../ui/formatter.js';
+import { theme, hr, statusBadge, statusColor, statusLine } from '../ui/formatter.js';
 
 // ── Terminal rendering ────────────────────────────────────────────
 
@@ -80,10 +74,7 @@ interface DiagnoseOptions {
   output?: string;
 }
 
-export function createDiagnoseCommand(
-  engine: DiagnosticEngine,
-  config?: ResolvedConfig,
-): Command {
+export function createDiagnoseCommand(engine: DiagnosticEngine, config?: ResolvedConfig): Command {
   return new Command('diagnose')
     .description('Run diagnostic checks for a specific technology.')
     .argument('<plugin>', 'The technology to diagnose (e.g., node, mysql)')
@@ -100,9 +91,8 @@ export function createDiagnoseCommand(
 
       if (format === 'terminal') showCompactBanner();
 
-      const spinner = format === 'terminal'
-        ? createSpinner(`Running ${pluginName} diagnostics...`)
-        : null;
+      const spinner =
+        format === 'terminal' ? createSpinner(`Running ${pluginName} diagnostics...`) : null;
 
       const result = await engine.runDiagnostics(pluginName);
 
@@ -122,7 +112,9 @@ export function createDiagnoseCommand(
           }
           console.log();
           // Item 8: what to do next
-          console.log(`  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`);
+          console.log(
+            `  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('to see all available commands and options.')}`,
+          );
           console.log();
         }
         process.exitCode = 1;
@@ -193,9 +185,9 @@ export function createDiagnoseCommand(
       console.log();
 
       // Item 2: only show the --verbose tip when there's suppressed detail to reveal
-      const hasHiddenDetail = !verbose && result.checks.some(
-        (c) => c.status === 'pass' && c.detail && c.detail.trim().length > 0,
-      );
+      const hasHiddenDetail =
+        !verbose &&
+        result.checks.some((c) => c.status === 'pass' && c.detail && c.detail.trim().length > 0);
       if (hasHiddenDetail) {
         console.log(
           `  ${theme.muted('Tip: Use')} ${chalk.white('--verbose')} ${theme.muted('to see detailed explanations for all checks.')}`,
@@ -204,8 +196,9 @@ export function createDiagnoseCommand(
       }
 
       if (options.output) {
-        const mdContent = new (await import('../reporting/markdown-renderer.js')).MarkdownRenderer()
-          .renderDiagnostic(result);
+        const mdContent = new (
+          await import('../reporting/markdown-renderer.js')
+        ).MarkdownRenderer().renderDiagnostic(result);
         const filePath = writeReport(mdContent, options.output, config?.reportOutputDir);
         console.log(`  ${theme.muted('Report saved to')} ${chalk.white(filePath)}`);
         console.log();

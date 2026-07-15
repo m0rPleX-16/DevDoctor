@@ -6,9 +6,14 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import type { DiagnosticCheck } from '../../../core/types/diagnostic.js';
 import { parseConfigFile } from '../../../infra/system/config-parser.js';
-import { MYSQL_CONFIG_PATHS_WINDOWS, MYSQL_DEFAULT_PORT } from '../mysql-constants.js';
+import {
+  MYSQL_CONFIG_PATHS_WINDOWS,
+  MYSQL_CONFIG_PATHS_UNIX,
+  MYSQL_DEFAULT_PORT,
+} from '../mysql-constants.js';
 
 export interface ConfigCheckResult {
   check: DiagnosticCheck;
@@ -23,11 +28,14 @@ export interface ConfigCheckResult {
  */
 export async function checkMysqlConfig(): Promise<ConfigCheckResult> {
   let foundPath: string | undefined;
+  const isWindows = process.platform === 'win32';
+  const candidates = isWindows ? MYSQL_CONFIG_PATHS_WINDOWS : MYSQL_CONFIG_PATHS_UNIX;
 
   // 1. Check common locations
-  for (const p of MYSQL_CONFIG_PATHS_WINDOWS) {
-    if (fs.existsSync(p)) {
-      foundPath = p;
+  for (const p of candidates) {
+    const resolvedPath = p.replace(/^~/, os.homedir());
+    if (fs.existsSync(resolvedPath)) {
+      foundPath = resolvedPath;
       break;
     }
   }
@@ -90,7 +98,7 @@ export async function checkMysqlConfig(): Promise<ConfigCheckResult> {
     }
   } else {
     // Try standard fallback log locations relative to my.ini
-    const hostName = process.env.COMPUTERNAME ?? 'mysql';
+    const hostName = os.hostname();
     const fallbackLog = path.resolve(path.dirname(foundPath), '..', 'data', `${hostName}.err`);
     if (fs.existsSync(fallbackLog)) {
       logErrorPath = fallbackLog;

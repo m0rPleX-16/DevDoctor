@@ -19,7 +19,7 @@
  */
 
 import type { DiagnosticResult } from '../types/diagnostic.js';
-import type { PluginRegistry } from '../../plugins/plugin-registry.js';
+import type { PluginRegistry } from '../plugin-registry.js';
 
 /** Default per-plugin timeout for runAll() in milliseconds. */
 const DEFAULT_PLUGIN_TIMEOUT_MS = 30_000;
@@ -122,7 +122,9 @@ export class DiagnosticEngine {
           detail:
             'The plugin did not complete within the allowed time. ' +
             'This may indicate a hung network call or a slow system command. ' +
-            'Try running `devdoctor diagnose ' + plugin.name + '` to diagnose it individually.',
+            'Try running `devdoctor diagnose ' +
+            plugin.name +
+            '` to diagnose it individually.',
         },
       ],
       overallStatus: 'skip',

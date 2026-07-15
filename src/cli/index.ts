@@ -18,7 +18,7 @@
 import { Command } from 'commander';
 import { createRequire } from 'node:module';
 import { showBanner } from './ui/banner.js';
-import { PluginRegistry } from '../plugins/plugin-registry.js';
+import { PluginRegistry } from '../core/plugin-registry.js';
 import { DiagnosticEngine } from '../core/engine/diagnostic-engine.js';
 import { RepairEngine } from '../core/engine/repair-engine.js';
 import { FileAuditLogger } from '../infra/audit/audit-logger.js';
@@ -75,13 +75,27 @@ async function main(): Promise<void> {
   //
   // When no arguments are given, launch the interactive menu in a TTY.
   // In non-interactive environments (pipes, CI) fall back to help output.
-  if (process.argv.length <= 2 && process.stdin.isTTY && process.stdout.isTTY) {
+  const hasGlobalQuiet = process.argv.includes('--quiet') || process.argv.includes('-q');
+  const isHelp = process.argv.includes('--help') || process.argv.includes('-h');
+  const hasNoCommand =
+    process.argv.length <= 2 || (process.argv.length === 3 && hasGlobalQuiet && !isHelp);
+
+  if (hasNoCommand && process.stdin.isTTY && process.stdout.isTTY) {
+    if (hasGlobalQuiet) {
+      chalk.level = 0;
+      process.env.DEVDOCTOR_QUIET = '1';
+    }
     const pluginNames = registry.getNames();
+
+    const baseInteractiveArgv = [...process.argv.slice(0, 2)];
+    if (hasGlobalQuiet) {
+      baseInteractiveArgv.push('--quiet');
+    }
 
     while (true) {
       console.clear();
       showBanner();
-      const argv = await runInteractiveMenu(pluginNames, process.argv.slice(0, 2));
+      const argv = await runInteractiveMenu(pluginNames, baseInteractiveArgv);
 
       if (!argv) {
         // User quit menu (Esc / q)
@@ -89,14 +103,24 @@ async function main(): Promise<void> {
       }
 
       // Create a fresh Program instance on every iteration to avoid option/parser state leakage
-      const program = buildProgram(PKG_VERSION, registry, engine, repairEngine, config, historyStore);
+      const program = buildProgram(
+        PKG_VERSION,
+        registry,
+        engine,
+        repairEngine,
+        config,
+        historyStore,
+      );
       program.exitOverride(); // Prevent process.exit() so we can return to the menu loop on errors/help
 
       try {
         await program.parseAsync(argv);
       } catch (err: any) {
         // Ignore expected Displayed help exit or other commander exit overrides
-        if (err.code !== 'commander.helpDisplayed' && err.code !== 'commander.executeSubCommandAsync') {
+        if (
+          err.code !== 'commander.helpDisplayed' &&
+          err.code !== 'commander.executeSubCommandAsync'
+        ) {
           console.error(`\n  ${theme.error(`Command error: ${err.message}`)}`);
         }
       }
@@ -158,7 +182,8 @@ function buildProgram(
   });
 
   program.addHelpText('after', () => {
-    const available = registry.list()
+    const available = registry
+      .list()
       .map((p) => `${chalk.bold(p.name.padEnd(8))} ${theme.muted(p.description)}`)
       .join('\n  ');
     return `

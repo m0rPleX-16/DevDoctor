@@ -16,7 +16,7 @@
  * concrete plugin implementations, but doesn't depend on any specific plugin.
  */
 
-import type { Plugin } from '../core/types/plugin.js';
+import type { Plugin } from './types/plugin.js';
 
 export class PluginRegistry {
   private readonly plugins: Map<string, Plugin> = new Map();
@@ -30,8 +30,7 @@ export class PluginRegistry {
   register(plugin: Plugin): void {
     if (this.plugins.has(plugin.name)) {
       throw new Error(
-        `Plugin "${plugin.name}" is already registered. ` +
-          `Each plugin must have a unique name.`,
+        `Plugin "${plugin.name}" is already registered. ` + `Each plugin must have a unique name.`,
       );
     }
 

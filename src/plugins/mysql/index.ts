@@ -57,8 +57,7 @@ async function runSystemctl(
   serviceName: string,
 ): Promise<ReturnType<typeof runCommand>> {
   // On root we can call systemctl directly
-  const isRoot =
-    typeof process.getuid === 'function' && process.getuid() === 0;
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
 
   if (isRoot) {
     return runCommand('systemctl', [action, serviceName]);
@@ -73,8 +72,7 @@ async function runSystemctl(
     return {
       ...result,
       stderr:
-        `Elevation required: re-run with sudo or as root.\n` +
-        `Original error: ${result.stderr}`,
+        `Elevation required: re-run with sudo or as root.\n` + `Original error: ${result.stderr}`,
     };
   }
 
@@ -87,7 +85,13 @@ export class MysqlPlugin implements Plugin {
   readonly name = 'mysql';
   readonly displayName = 'MySQL';
   readonly description = 'Diagnoses your MySQL local database environment.';
-  readonly projectMarkers = ['docker-compose.yml', 'docker-compose.yaml', '.env', 'my.cnf', 'my.ini'];
+  readonly projectMarkers = [
+    'docker-compose.yml',
+    'docker-compose.yaml',
+    '.env',
+    'my.cnf',
+    'my.ini',
+  ];
 
   /**
    * Cached results from the most recent diagnose() call.
@@ -153,7 +157,10 @@ export class MysqlPlugin implements Plugin {
     // When a service is present, the service check already covers process status
     // and showing both would be redundant and confusing.
     const serviceCheck = checks.find((c) => c.name === 'mysql-service');
-    if (serviceCheck && !(serviceCheck.status === 'warn' && serviceCheck.message.includes('No registered'))) {
+    if (
+      serviceCheck &&
+      !(serviceCheck.status === 'warn' && serviceCheck.message.includes('No registered'))
+    ) {
       checks = checks.filter((c) => c.name !== 'xampp-process');
     }
 
@@ -186,13 +193,13 @@ export class MysqlPlugin implements Plugin {
 
       let startResult = isWindows
         ? await runCommand('net', ['start', serviceName])
-        : await runSystemctl('start', serviceName);  // ADR-0009: elevation-aware
+        : await runSystemctl('start', serviceName); // ADR-0009: elevation-aware
 
       const needElevation =
         !startResult.success &&
         (startResult.stderr.includes('System error 5') ||
-         startResult.exitCode === 5 ||
-         startResult.stderr.includes('Elevation required'));
+          startResult.exitCode === 5 ||
+          startResult.stderr.includes('Elevation required'));
 
       if (needElevation) {
         startResult = isWindows
@@ -239,9 +246,7 @@ export class MysqlPlugin implements Plugin {
       // Resolve the my.ini path from the binary's directory
       // mysqld.exe lives in <basedir>/bin/, my.ini in the same folder
       const configPath = path.join(path.dirname(mysqldPath), 'my.ini');
-      const configArgs = fs.existsSync(configPath)
-        ? [`--defaults-file=${configPath}`]
-        : [];
+      const configArgs = fs.existsSync(configPath) ? [`--defaults-file=${configPath}`] : [];
 
       // Spawn mysqld as a detached background process.
       // This is exactly what the XAMPP Control Panel does internally.
@@ -328,7 +333,7 @@ export class MysqlPlugin implements Plugin {
         };
       }
 
-      const killResult = isWindows
+      let killResult = isWindows
         ? await runCommand('taskkill', ['/f', '/pid', String(ownerNow.pid)])
         : await (async () => {
             // Try graceful SIGTERM first to avoid leaving InnoDB in a corrupted state.
@@ -338,6 +343,21 @@ export class MysqlPlugin implements Plugin {
             // SIGTERM failed (process already gone or permission denied) — try SIGKILL
             return runCommand('kill', ['-9', String(ownerNow.pid)]);
           })();
+
+      // Elevation fallback: if the kill failed due to access denial, retry with elevation.
+      // On Windows: `taskkill` exits with "Access is denied." (exit code 5).
+      // On Unix: `kill` exits non-zero and stderr contains "Operation not permitted".
+      const needsElevation =
+        !killResult.success &&
+        (killResult.stderr.includes('Access is denied') ||
+          killResult.exitCode === 5 ||
+          killResult.stderr.includes('Operation not permitted'));
+
+      if (needsElevation) {
+        killResult = isWindows
+          ? await runElevatedCommand('taskkill', ['/f', '/pid', String(ownerNow.pid)])
+          : await runElevatedCommand('kill', ['-9', String(ownerNow.pid)]);
+      }
 
       if (killResult.success) {
         return {
@@ -371,9 +391,7 @@ export class MysqlPlugin implements Plugin {
 
     if (checkName === 'mysql-service') {
       const serviceName = await resolveInstalledServiceName();
-      const status = serviceName
-        ? (await checkService(serviceName)).status
-        : 'not_installed';
+      const status = serviceName ? (await checkService(serviceName)).status : 'not_installed';
       const verified = status === 'running';
       return {
         checkName,
@@ -437,7 +455,10 @@ export class MysqlPlugin implements Plugin {
         ? await runCommand('net', ['stop', serviceName])
         : await runSystemctl('stop', serviceName); // ADR-0009: elevation-aware
 
-      if (!stopResult.success && (stopResult.stderr.includes('System error 5') || stopResult.exitCode === 5)) {
+      if (
+        !stopResult.success &&
+        (stopResult.stderr.includes('System error 5') || stopResult.exitCode === 5)
+      ) {
         stopResult = isWindows
           ? await runElevatedCommand('net', ['stop', serviceName])
           : await runElevatedCommand('systemctl', ['stop', serviceName]);
@@ -511,9 +532,7 @@ export class MysqlPlugin implements Plugin {
 
   canRepair(checkName: string): boolean {
     return (
-      checkName === 'mysql-service' ||
-      checkName === 'mysql-port' ||
-      checkName === 'xampp-process'
+      checkName === 'mysql-service' || checkName === 'mysql-port' || checkName === 'xampp-process'
     );
   }
 }

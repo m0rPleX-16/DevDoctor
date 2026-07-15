@@ -42,9 +42,9 @@ const ART_WIDTH = Math.max(...ART_LINES.map((l) => l.length));
 
 // ── Gradient stops ────────────────────────────────────────────────
 // Three-stop: cyan → indigo → purple
-const STOP_A: [number, number, number] = [54, 188, 247];   // #36BCF7 cyan
-const STOP_B: [number, number, number] = [99, 102, 241];   // #6366F1 indigo
-const STOP_C: [number, number, number] = [124, 58, 237];   // #7C3AED purple
+const STOP_A: [number, number, number] = [54, 188, 247]; // #36BCF7 cyan
+const STOP_B: [number, number, number] = [99, 102, 241]; // #6366F1 indigo
+const STOP_C: [number, number, number] = [124, 58, 237]; // #7C3AED purple
 
 // Box border color: indigo midpoint for a "glow" look
 const BORDER_COLOR = '#5B5BCA';
@@ -93,10 +93,7 @@ function boxBottom(innerWidth: number): string {
 function boxRow(content: string, innerWidth: number, rawLength: number): string {
   const padding = Math.max(innerWidth - rawLength, 0);
   return (
-    chalk.hex(BORDER_COLOR)('│') +
-    content +
-    ' '.repeat(padding) +
-    chalk.hex(BORDER_COLOR)('│')
+    chalk.hex(BORDER_COLOR)('│') + content + ' '.repeat(padding) + chalk.hex(BORDER_COLOR)('│')
   );
 }
 
@@ -141,10 +138,14 @@ export function showBanner(): void {
   const platformBadge = pill('CLI', '#0F766E', '#CCFBF1');
   const footerContent = tagline + '   ' + versionBadge + ' ' + platformBadge;
   const footerRawLen =
-    2 + taglineText.length + 3 +
-    (1 + versionText.length + 1) + 1 +
-    (1 + 'CLI'.length + 1);
+    2 + taglineText.length + 3 + (1 + versionText.length + 1) + 1 + (1 + 'CLI'.length + 1);
   console.log(boxRow(footerContent, innerWidth, footerRawLen));
+
+  // Repository Link
+  const repoText = 'https://github.com/m0rPleX-16/DevDoctor';
+  const repoContent = `  ${theme.muted('Repo:')} ${chalk.cyan(repoText)}`;
+  const repoRawLen = 2 + 5 + 1 + repoText.length;
+  console.log(boxRow(repoContent, innerWidth, repoRawLen));
 
   console.log(boxBottom(innerWidth));
   console.log();
@@ -172,8 +173,8 @@ export function showCompactBanner(): void {
   console.log(`  ${border('╷')}`);
   console.log(
     `  ${border('│')}  ${chalk.hex('#36BCF7').bold('✦ Dev Doctor')}` +
-    `  ${chalk.hex('#6366F1').bold(`v${version}`)}` +
-    `  ${theme.muted('·')}  ${theme.muted('Diagnose · Explain · Repair')}`,
+      `  ${chalk.hex('#6366F1').bold(`v${version}`)}` +
+      `  ${theme.muted('·')}  ${theme.muted('Diagnose · Explain · Repair')}`,
   );
   console.log(`  ${border('╵')}`);
   console.log();

@@ -49,7 +49,7 @@ function detectLocalVenv(cwd: string): string | null {
   const dotVenv = path.join(cwd, '.venv');
   if (fs.existsSync(dotVenv)) {
     const activateUnix = path.join(dotVenv, 'bin', 'activate');
-    const activateWin  = path.join(dotVenv, 'Scripts', 'activate.bat');
+    const activateWin = path.join(dotVenv, 'Scripts', 'activate.bat');
     if (fs.existsSync(activateUnix) || fs.existsSync(activateWin)) {
       return dotVenv;
     }
@@ -58,7 +58,7 @@ function detectLocalVenv(cwd: string): string | null {
   const venvDir = path.join(cwd, 'venv');
   if (fs.existsSync(venvDir)) {
     const activateUnix = path.join(venvDir, 'bin', 'activate');
-    const activateWin  = path.join(venvDir, 'Scripts', 'activate.bat');
+    const activateWin = path.join(venvDir, 'Scripts', 'activate.bat');
     if (fs.existsSync(activateUnix) || fs.existsSync(activateWin)) {
       return venvDir;
     }
@@ -67,12 +67,12 @@ function detectLocalVenv(cwd: string): string | null {
 }
 
 export async function checkPythonVenv(): Promise<DiagnosticCheck> {
-  const venvPath     = process.env.VIRTUAL_ENV;
-  const condaEnv     = process.env.CONDA_DEFAULT_ENV;
-  const condaPrefix  = process.env.CONDA_PREFIX;
+  const venvPath = process.env.VIRTUAL_ENV;
+  const condaEnv = process.env.CONDA_DEFAULT_ENV;
+  const condaPrefix = process.env.CONDA_PREFIX;
   const poetryActive = process.env.POETRY_ACTIVE;
   const uvProjectEnv = process.env.UV_PROJECT_ENVIRONMENT;
-  const cwd          = process.cwd();
+  const cwd = process.cwd();
 
   // ── Active environments ───────────────────────────────────────
 
@@ -137,19 +137,20 @@ export async function checkPythonVenv(): Promise<DiagnosticCheck> {
   const localVenv = detectLocalVenv(cwd);
   if (localVenv) {
     const isWindows = process.platform === 'win32';
+    const venvName = path.basename(localVenv);
     return {
       name: 'python-venv',
       label: 'Virtual Environment',
       status: 'pass',
       message: `Virtual environment directory found at: ${path.relative(cwd, localVenv) || localVenv}`,
       detail:
-        `A ".venv" directory with activation scripts exists in the current directory. ` +
+        `A "${venvName}" directory with activation scripts exists in the current directory. ` +
         `It is not currently activated in this shell session, but tools like VS Code, ` +
         `PyCharm, and uv may activate it automatically when running commands.\n\n` +
         `To activate it manually:\n` +
         (isWindows
-          ? `  .venv\\Scripts\\activate   (PowerShell / CMD)`
-          : `  source .venv/bin/activate`),
+          ? `  ${venvName}\\Scripts\\activate   (PowerShell / CMD)`
+          : `  source ${venvName}/bin/activate`),
       dependsOn: ['python-installation'],
     };
   }

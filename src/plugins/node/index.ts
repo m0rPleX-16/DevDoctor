@@ -104,17 +104,17 @@ export class NodePlugin implements Plugin {
         const nvmExists = nvmDir
           ? fs.existsSync(nvmDir)
           : fs.existsSync(path.join(os.homedir(), '.nvm'));
-        const nvmWindowsExists = isWindows && (
-          fs.existsSync(path.join(os.homedir(), 'AppData', 'Roaming', 'nvm')) ||
-          fs.existsSync('C:\\nvm') ||
-          !!process.env.NVM_HOME
-        );
+        const nvmWindowsExists =
+          isWindows &&
+          (fs.existsSync(path.join(os.homedir(), 'AppData', 'Roaming', 'nvm')) ||
+            fs.existsSync('C:\\nvm') ||
+            !!process.env.NVM_HOME);
 
         if (nvmExists || nvmWindowsExists) {
           return {
             checkName,
             success: false,
-            message: 'nvm detected — changing the npm prefix would break nvm\'s version management.',
+            message: "nvm detected — changing the npm prefix would break nvm's version management.",
             detail:
               'nvm stores global packages per Node version inside ~/.nvm. Setting a custom ' +
               'npm prefix in .npmrc conflicts with this and causes `nvm use` to fail.\n' +
@@ -126,7 +126,9 @@ export class NodePlugin implements Plugin {
 
         // 1. Get current prefix so we can support rollback
         const currentPrefixResult = await runCommand('npm', ['config', 'get', 'prefix']);
-        const oldPrefix = currentPrefixResult.success ? currentPrefixResult.stdout.trim() : undefined;
+        const oldPrefix = currentPrefixResult.success
+          ? currentPrefixResult.stdout.trim()
+          : undefined;
 
         if (oldPrefix) {
           const auditDir = path.join(os.homedir(), '.devdoctor');

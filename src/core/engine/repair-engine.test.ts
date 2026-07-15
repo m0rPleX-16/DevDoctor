@@ -13,7 +13,7 @@
  * i.e. what callers of plugin.repair / plugin.verify can rely on.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { Plugin } from '../../core/types/plugin.js';
 import type { DiagnosticResult } from '../../core/types/diagnostic.js';
 import type { RepairResult, VerificationResult } from '../../core/types/repair.js';
@@ -22,7 +22,10 @@ import type { RepairResult, VerificationResult } from '../../core/types/repair.j
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeDiagnosticResult(pluginName: string, status: 'pass' | 'fail' = 'fail'): DiagnosticResult {
+function makeDiagnosticResult(
+  pluginName: string,
+  status: 'pass' | 'fail' = 'fail',
+): DiagnosticResult {
   return {
     pluginName,
     displayName: pluginName,

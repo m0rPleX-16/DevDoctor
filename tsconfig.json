@@ -14,12 +14,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "paths": {
-      "@core/*": ["./src/core/*"],
-      "@plugins/*": ["./src/plugins/*"],
-      "@infra/*": ["./src/infra/*"],
-      "@cli/*": ["./src/cli/*"]
-    },
     "baseUrl": "."
   },
   "include": ["src/**/*"],

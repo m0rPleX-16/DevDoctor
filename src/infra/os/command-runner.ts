@@ -136,10 +136,7 @@ export async function runCommand(
 
     const { stdout, stderr } = shell
       ? // Shell mode (Windows): sanitize args before building command string (ADR-0009)
-        await execAsync(
-          [command, ...args.map(sanitizeWindowsArg)].join(' '),
-          execOptions,
-        )
+        await execAsync([command, ...args.map(sanitizeWindowsArg)].join(' '), execOptions)
       : // Non-shell mode (Unix): execFile avoids the shell entirely
         await execFileAsync(command, args, {
           ...execOptions,
@@ -172,8 +169,7 @@ export async function runCommand(
       command,
       args,
       stdout: (execError.stdout ?? '').toString().trim(),
-      stderr:
-        (execError.stderr ?? (error instanceof Error ? error.message : '')).toString().trim(),
+      stderr: (execError.stderr ?? (error instanceof Error ? error.message : '')).toString().trim(),
       exitCode: typeof execError.code === 'number' ? execError.code : 1,
       success: false,
       durationMs,
@@ -183,10 +179,10 @@ export async function runCommand(
 
 /**
  * Execute a system command with elevated privileges (Administrator/root).
- * 
+ *
  * On Windows: Uses PowerShell `Start-Process -Verb RunAs` which automatically
  * triggers a UAC prompt.
- * 
+ *
  * On Unix: Uses `sudo`.
  *
  * @param command - The executable to run
@@ -199,17 +195,15 @@ export async function runElevatedCommand(
   options: CommandOptions = {},
 ): Promise<CommandResult> {
   const isWindows = process.platform === 'win32';
-  
+
   if (isWindows) {
     // Construct argument list for PowerShell Start-Process
-    const psArgs = args.length > 0 
-      ? args.map(a => `"${a.replace(/"/g, '`"')}"`).join(',') 
-      : '""';
-      
+    const psArgs = args.length > 0 ? args.map((a) => `"${a.replace(/"/g, '`"')}"`).join(',') : '""';
+
     // Execute via PowerShell. We use -PassThru to get the process object
     // and wait for it to finish, so we can propagate its exit code.
     const psCommand = `$p = Start-Process -FilePath "${command}" -ArgumentList ${psArgs} -Verb RunAs -Wait -WindowStyle Hidden -PassThru; exit $p.ExitCode`;
-    
+
     return runCommand('powershell', ['-NoProfile', '-Command', psCommand], options);
   } else {
     // On Unix, just prepend sudo. The terminal will prompt for a password

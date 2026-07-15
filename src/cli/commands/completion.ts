@@ -134,7 +134,7 @@ Register-ArgumentCompleter -Native -CommandName '${binName}' -ScriptBlock {
   $formats     = @('terminal', 'json', 'markdown')
   $cleanSubs   = @('snapshot', 'history', 'audit', 'lock', 'all')
   $configSubs  = @('init', 'show', 'path')
-  $tokens      = $commandAst.ToString() -split '\s+'
+  $tokens      = $commandAst.ToString() -split '\\s+'
   $subCmd      = if ($tokens.Count -gt 1) { $tokens[1] } else { '' }
   $subSubCmd   = if ($tokens.Count -gt 2) { $tokens[2] } else { '' }
 
@@ -156,10 +156,7 @@ Register-ArgumentCompleter -Native -CommandName '${binName}' -ScriptBlock {
 export function createCompletionCommand(binName: string): Command {
   return new Command('completion')
     .description('Generate a shell tab-completion script.')
-    .argument(
-      '<shell>',
-      `Shell to generate completions for: ${SHELLS.join(', ')}`,
-    )
+    .argument('<shell>', `Shell to generate completions for: ${SHELLS.join(', ')}`)
     .addHelpText(
       'after',
       `
@@ -174,9 +171,7 @@ Examples:
       const s = shell.toLowerCase() as Shell;
 
       if (!SHELLS.includes(s)) {
-        console.error(
-          `  ${theme.error(`✖ Unknown shell: "${shell}"`)}`,
-        );
+        console.error(`  ${theme.error(`✖ Unknown shell: "${shell}"`)}`);
         console.error(
           `  ${theme.muted('Supported shells:')} ${SHELLS.map((x) => chalk.white(x)).join(theme.muted(', '))}`,
         );

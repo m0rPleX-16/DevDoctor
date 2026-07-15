@@ -1,4 +1,3 @@
-import path from 'node:path';
 import type { DiagnosticCheck } from '../../../core/types/diagnostic.js';
 import { runCommand } from '../../../infra/os/command-runner.js';
 

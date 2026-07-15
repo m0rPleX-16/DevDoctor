@@ -39,7 +39,8 @@ export interface DetectedTool {
   installed: boolean;
 
   /** Category for grouping in display */
-  category: 'runtime' | 'package-manager' | 'version-control' | 'container' | 'build-tool' | 'database';
+  category:
+    'runtime' | 'package-manager' | 'version-control' | 'container' | 'build-tool' | 'database';
 }
 
 /**

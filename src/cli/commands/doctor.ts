@@ -45,7 +45,10 @@ const TOOL_CATEGORY_LABELS: Record<DetectedTool['category'], string> = {
 };
 
 function calculateHealthScore(diagnostics: DiagnosticResult[]) {
-  let total = 0, passed = 0, warnings = 0, failures = 0;
+  let total = 0,
+    passed = 0,
+    warnings = 0,
+    failures = 0;
   for (const r of diagnostics) {
     for (const c of r.checks) {
       total++;
@@ -57,14 +60,24 @@ function calculateHealthScore(diagnostics: DiagnosticResult[]) {
   const percentage = total > 0 ? Math.round((passed / total) * 100) : 100;
   const status: HealthStatus =
     percentage >= 80 ? 'healthy' : percentage >= 50 ? 'degraded' : 'unhealthy';
-  return { percentage, status, totalChecks: total, passedChecks: passed, warningChecks: warnings, failedChecks: failures };
+  return {
+    percentage,
+    status,
+    totalChecks: total,
+    passedChecks: passed,
+    warningChecks: warnings,
+    failedChecks: failures,
+  };
 }
 
 function healthDisplay(status: HealthStatus) {
   switch (status) {
-    case 'healthy':   return { label: 'Healthy',   icon: theme.success('●'), colorFn: theme.success };
-    case 'degraded':  return { label: 'Degraded',  icon: theme.warning('▲'), colorFn: theme.warning };
-    case 'unhealthy': return { label: 'Unhealthy', icon: theme.error('✖'),  colorFn: theme.error };
+    case 'healthy':
+      return { label: 'Healthy', icon: theme.success('●'), colorFn: theme.success };
+    case 'degraded':
+      return { label: 'Degraded', icon: theme.warning('▲'), colorFn: theme.warning };
+    case 'unhealthy':
+      return { label: 'Unhealthy', icon: theme.error('✖'), colorFn: theme.error };
   }
 }
 
@@ -79,7 +92,7 @@ export function createDoctorCommand(
   engine: DiagnosticEngine,
   config?: ResolvedConfig,
   historyStore?: IHistoryStore,
-  registry?: import('../../plugins/plugin-registry.js').PluginRegistry,
+  registry?: import('../../core/plugin-registry.js').PluginRegistry,
 ): Command {
   return new Command('doctor')
     .description('Run a full health check across all plugins and tools.')
@@ -95,14 +108,9 @@ export function createDoctorCommand(
       if (format === 'terminal') showCompactBanner();
 
       const startTime = performance.now();
-      const spinner = format === 'terminal'
-        ? createSpinner('Running full health check...')
-        : null;
+      const spinner = format === 'terminal' ? createSpinner('Running full health check...') : null;
 
-      const [diagnostics, tools] = await Promise.all([
-        engine.runAll(),
-        detectTools(),
-      ]);
+      const [diagnostics, tools] = await Promise.all([engine.runAll(), detectTools()]);
 
       const durationMs = Math.round(performance.now() - startTime);
       const health = calculateHealthScore(diagnostics);
@@ -167,12 +175,14 @@ export function createDoctorCommand(
       console.log(sectionHeader('Health Score', icon));
       console.log(connector());
       console.log(`  ${theme.muted('│')}  ${progressBar(health.percentage, 30, { invert: true })}`);
-      console.log(`  ${theme.muted('│')}  ${colorFn(label)} ${theme.muted('·')} ${theme.muted(`${health.totalChecks} checks in ${durationMs}ms`)}`);
+      console.log(
+        `  ${theme.muted('│')}  ${colorFn(label)} ${theme.muted('·')} ${theme.muted(`${health.totalChecks} checks in ${durationMs}ms`)}`,
+      );
       console.log(connector());
       console.log(
         `  ${theme.muted('│')}  ${theme.success(`${health.passedChecks} passed`)}` +
-        `  ${theme.muted('·')}  ${theme.warning(`${health.warningChecks} warnings`)}` +
-        `  ${theme.muted('·')}  ${theme.error(`${health.failedChecks} failed`)}`,
+          `  ${theme.muted('·')}  ${theme.warning(`${health.warningChecks} warnings`)}` +
+          `  ${theme.muted('·')}  ${theme.error(`${health.failedChecks} failed`)}`,
       );
 
       if (diagnostics.length > 0) {
@@ -184,9 +194,10 @@ export function createDoctorCommand(
         // Detect which plugins have markers present in the current directory.
         // If the registry was passed, group results into detected vs other.
         const allPlugins = registry?.list() ?? [];
-        const projectCtx = allPlugins.length > 0
-          ? detectProjectContext(allPlugins)
-          : { detectedPlugins: new Set<string>(), matchedMarkers: {} };
+        const projectCtx =
+          allPlugins.length > 0
+            ? detectProjectContext(allPlugins)
+            : { detectedPlugins: new Set<string>(), matchedMarkers: {} };
 
         const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
 
@@ -198,15 +209,18 @@ export function createDoctorCommand(
           const badge = statusBadge(result.overallStatus);
           const name = statusColor(result.displayName, result.overallStatus);
           const relevanceTag = hasAnyDetected
-            ? (isDetected ? chalk.hex('#86efac')(' · detected') : theme.muted(' · not in project'))
+            ? isDetected
+              ? chalk.hex('#86efac')(' · detected')
+              : theme.muted(' · not in project')
             : '';
-          const markers = isDetected && projectCtx.matchedMarkers[result.pluginName]
-            ? theme.muted(` (${projectCtx.matchedMarkers[result.pluginName].join(', ')})`)
-            : '';
+          const markers =
+            isDetected && projectCtx.matchedMarkers[result.pluginName]
+              ? theme.muted(` (${projectCtx.matchedMarkers[result.pluginName].join(', ')})`)
+              : '';
           console.log(
             `  ${theme.muted('│')}  ${badge}  ${name}${relevanceTag}${markers}  ` +
-            `${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ` +
-            `${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
+              `${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ` +
+              `${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
           );
           // For detected plugins, show failing/warning check details inline.
           // For "other" plugins, skip is noise — only show actual fail/warn, not skips.
@@ -218,7 +232,7 @@ export function createDoctorCommand(
               if (showInline) {
                 console.log(
                   `  ${theme.muted('│')}     ${statusBadge(check.status)}  ` +
-                  `${theme.muted(check.label)}: ${theme.muted(check.message)}`,
+                    `${theme.muted(check.label)}: ${theme.muted(check.message)}`,
                 );
               }
             }
@@ -248,7 +262,9 @@ export function createDoctorCommand(
       console.log(sectionHeader('Development Tools', theme.accent('⚒')));
       console.log(connector());
       const installedCount = tools.filter((t) => t.installed).length;
-      console.log(`  ${theme.muted('│')}  ${theme.muted(`${installedCount} of ${tools.length} tools detected`)}`);
+      console.log(
+        `  ${theme.muted('│')}  ${theme.muted(`${installedCount} of ${tools.length} tools detected`)}`,
+      );
       console.log(connector());
 
       const toolsByCategory = new Map<DetectedTool['category'], DetectedTool[]>();
@@ -259,7 +275,12 @@ export function createDoctorCommand(
       }
 
       const categoryOrder: DetectedTool['category'][] = [
-        'runtime', 'package-manager', 'version-control', 'container', 'build-tool', 'database',
+        'runtime',
+        'package-manager',
+        'version-control',
+        'container',
+        'build-tool',
+        'database',
       ];
 
       for (const category of categoryOrder) {
@@ -278,12 +299,16 @@ export function createDoctorCommand(
 
       // Item 4: include warn checks with suggestions, not just fail; show count in label
       const recommendations = diagnostics
-        .flatMap((r) => r.checks.map((c) => ({ ...c, pluginName: r.pluginName, displayName: r.displayName })))
+        .flatMap((r) =>
+          r.checks.map((c) => ({ ...c, pluginName: r.pluginName, displayName: r.displayName })),
+        )
         .filter((c) => (c.status === 'fail' || c.status === 'warn') && c.suggestion);
 
       if (recommendations.length > 0) {
         console.log();
-        console.log(sectionHeader(`Recommendations (${recommendations.length})`, theme.highlight('✦')));
+        console.log(
+          sectionHeader(`Recommendations (${recommendations.length})`, theme.highlight('✦')),
+        );
         console.log(connector());
         recommendations.forEach((c, i) => {
           const badge = statusBadge(c.status);
@@ -303,8 +328,9 @@ export function createDoctorCommand(
       console.log();
 
       if (options.output) {
-        const mdContent = new (await import('../reporting/markdown-renderer.js')).MarkdownRenderer()
-          .renderDoctor(doctorResult);
+        const mdContent = new (
+          await import('../reporting/markdown-renderer.js')
+        ).MarkdownRenderer().renderDoctor(doctorResult);
         const filePath = writeReport(mdContent, options.output, config?.reportOutputDir);
         console.log(`  ${theme.muted('Report saved to')} ${chalk.white(filePath)}`);
         console.log();

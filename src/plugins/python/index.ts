@@ -34,8 +34,16 @@ export class PythonPlugin implements Plugin {
   readonly displayName = 'Python';
   readonly description = 'Diagnoses your Python development environment.';
   readonly projectMarkers = [
-    'requirements.txt', 'pyproject.toml', 'setup.py', 'setup.cfg',
-    'Pipfile', '.python-version', '.venv', 'venv', 'conda.yaml', 'environment.yml',
+    'requirements.txt',
+    'pyproject.toml',
+    'setup.py',
+    'setup.cfg',
+    'Pipfile',
+    '.python-version',
+    '.venv',
+    'venv',
+    'conda.yaml',
+    'environment.yml',
   ];
 
   async diagnose(): Promise<DiagnosticResult> {
@@ -99,7 +107,8 @@ export class PythonPlugin implements Plugin {
           return {
             checkName,
             success: false,
-            message: 'Cannot create virtual environment: Python is not installed or not found on the system PATH.',
+            message:
+              'Cannot create virtual environment: Python is not installed or not found on the system PATH.',
             rollbackSupported: false,
           };
         }
@@ -109,8 +118,10 @@ export class PythonPlugin implements Plugin {
           return {
             checkName,
             success: true,
-            message: 'A virtual environment directory (.venv) already exists in the current directory.',
-            detail: `Tip: To activate it in your current terminal, run:\n` +
+            message:
+              'A virtual environment directory (.venv) already exists in the current directory.',
+            detail:
+              `Tip: To activate it in your current terminal, run:\n` +
               `  .venv\\Scripts\\activate        (Windows PowerShell)\n` +
               `  source .venv/bin/activate     (macOS/Linux)`,
             rollbackSupported: false,
@@ -132,7 +143,8 @@ export class PythonPlugin implements Plugin {
           checkName,
           success: true,
           message: `Successfully created Python virtual environment inside ".venv" using ${pythonCmd}.`,
-          detail: `Created virtualenv at: ${venvDir}\n` +
+          detail:
+            `Created virtualenv at: ${venvDir}\n` +
             `›  Tip: You still need to activate it in your terminal by running:\n` +
             `   - Windows: .venv\\Scripts\\activate\n` +
             `   - macOS/Linux: source .venv/bin/activate`,

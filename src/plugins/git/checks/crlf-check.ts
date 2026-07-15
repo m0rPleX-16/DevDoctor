@@ -72,7 +72,8 @@ export async function checkCrlf(): Promise<DiagnosticCheck> {
     status: 'pass',
     message: `Configured correctly (core.autocrlf = ${autocrlf}).`,
     detail:
-      CRLF_DETAIL + '\n\n' +
+      CRLF_DETAIL +
+      '\n\n' +
       `Your setting (${autocrlf}) is appropriate for ${isWindows ? 'Windows' : 'Unix/macOS'}. ` +
       'Git will handle line-ending translation automatically, keeping your repository ' +
       'clean and collaboration friction-free.',

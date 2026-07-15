@@ -21,45 +21,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-
-// ── Types ─────────────────────────────────────────────────────────
-
-export type AuditAction = 'repair' | 'verify' | 'rollback';
-
-export interface AuditEntry {
-  /** ISO 8601 UTC timestamp */
-  timestamp: string;
-  /** Plugin name (e.g. "mysql") */
-  plugin: string;
-  /** Check name within the plugin (e.g. "mysql-service") */
-  checkName: string;
-  /** The action that was performed */
-  action: AuditAction;
-  /** Whether the action succeeded */
-  success: boolean;
-  /** Human-readable result message */
-  message: string;
-  /** Whether this was a dry run (no actual changes were made) */
-  dryRun: boolean;
-}
-
-// ── Interface ─────────────────────────────────────────────────────
-
-/**
- * The interface the Core layer depends on (via dependency injection).
- * The Core layer never imports from the Infrastructure layer directly.
- */
-export interface IAuditLogger {
-  log(entry: AuditEntry): void;
-}
-
-// ── Null logger (for tests / dry-run) ────────────────────────────
-
-/** A no-op logger used in tests or when audit logging is disabled. */
-export const nullAuditLogger: IAuditLogger = {
-  log: () => { /* intentionally empty */ },
-};
-
+import type { AuditEntry, IAuditLogger } from '../../core/types/audit-logger.js';
 // ── File-backed logger ────────────────────────────────────────────
 
 const AUDIT_DIR = path.join(os.homedir(), '.devdoctor');

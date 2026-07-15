@@ -65,11 +65,10 @@ export async function checkMysqlService(): Promise<DiagnosticCheck> {
       detail:
         `The service "${installedService.name}" exists but is not running. External clients ` +
         'will not be able to establish database connections until the service is started.',
-      suggestion:
-        isWindows
-          ? `Open Services (services.msc), find "${installedService.name}", and click "Start". ` +
-            `Alternatively, run: net start ${installedService.name} (requires admin privileges).`
-          : `Start the service running: sudo systemctl start ${installedService.name}`,
+      suggestion: isWindows
+        ? `Open Services (services.msc), find "${installedService.name}", and click "Start". ` +
+          `Alternatively, run: net start ${installedService.name} (requires admin privileges).`
+        : `Start the service running: sudo systemctl start ${installedService.name}`,
     };
   }
 

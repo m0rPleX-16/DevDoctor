@@ -14,15 +14,15 @@ import chalk, { type ChalkInstance } from 'chalk';
 // Centralized color palette so the entire CLI feels cohesive.
 
 export const theme = {
-  primary: chalk.hex('#36BCF7'),      // Bright cyan-blue
-  secondary: chalk.hex('#7C3AED'),    // Purple accent
-  success: chalk.hex('#22C55E'),      // Green
-  warning: chalk.hex('#EAB308'),      // Amber
-  error: chalk.hex('#EF4444'),        // Red
-  muted: chalk.hex('#6B7280'),        // Gray
-  text: chalk.hex('#E5E7EB'),         // Light gray text
-  accent: chalk.hex('#06B6D4'),       // Teal accent
-  highlight: chalk.hex('#F59E0B'),    // Gold highlight
+  primary: chalk.hex('#36BCF7'), // Bright cyan-blue
+  secondary: chalk.hex('#7C3AED'), // Purple accent
+  success: chalk.hex('#22C55E'), // Green
+  warning: chalk.hex('#EAB308'), // Amber
+  error: chalk.hex('#EF4444'), // Red
+  muted: chalk.hex('#6B7280'), // Gray
+  text: chalk.hex('#E5E7EB'), // Light gray text
+  accent: chalk.hex('#06B6D4'), // Teal accent
+  highlight: chalk.hex('#F59E0B'), // Gold highlight
 };
 
 // ── Gradient ──────────────────────────────────────────────────────
@@ -69,11 +69,7 @@ export function hr(label?: string, width: number = 50): string {
   const left = Math.floor(remaining / 2);
   const right = remaining - left;
 
-  return (
-    theme.muted('─'.repeat(left)) +
-    chalk.bold(labelText) +
-    theme.muted('─'.repeat(right))
-  );
+  return theme.muted('─'.repeat(left)) + chalk.bold(labelText) + theme.muted('─'.repeat(right));
 }
 
 /**
@@ -94,11 +90,7 @@ export function sectionHeader(title: string, icon?: string): string {
  * Example:
  *   │  Platform       Windows 11 (10.0.26200)
  */
-export function field(
-  label: string,
-  value: string,
-  labelWidth: number = 16,
-): string {
+export function field(label: string, value: string, labelWidth: number = 16): string {
   const pipe = theme.muted('│');
   const paddedLabel = theme.muted(label.padEnd(labelWidth));
   return `  ${pipe}  ${paddedLabel} ${theme.text(value)}`;
@@ -129,9 +121,7 @@ const STATUS_ICONS = {
  * Example:
  *   ● PASS    ▲ WARN    ✖ FAIL    ○ SKIP
  */
-export function statusBadge(
-  status: 'pass' | 'warn' | 'fail' | 'skip',
-): string {
+export function statusBadge(status: 'pass' | 'warn' | 'fail' | 'skip'): string {
   const { icon, color } = STATUS_ICONS[status];
   return color(icon);
 }
@@ -139,10 +129,7 @@ export function statusBadge(
 /**
  * Style text based on status.
  */
-export function statusColor(
-  text: string,
-  status: 'pass' | 'warn' | 'fail' | 'skip',
-): string {
+export function statusColor(text: string, status: 'pass' | 'warn' | 'fail' | 'skip'): string {
   return STATUS_ICONS[status].color(text);
 }
 
@@ -153,10 +140,7 @@ export function statusColor(
  *   ● All checks passed
  *   ✖ Issues found
  */
-export function statusLine(
-  status: 'pass' | 'warn' | 'fail' | 'skip',
-  message: string,
-): string {
+export function statusLine(status: 'pass' | 'warn' | 'fail' | 'skip', message: string): string {
   return `${statusBadge(status)}  ${statusColor(message, status)}`;
 }
 
@@ -168,10 +152,7 @@ export function statusLine(
  * Example:
  *   PASS   WARN   FAIL
  */
-export function tag(
-  label: string,
-  colorFn: ChalkInstance = theme.primary,
-): string {
+export function tag(label: string, colorFn: ChalkInstance = theme.primary): string {
   return colorFn.bold(` ${label} `);
 }
 

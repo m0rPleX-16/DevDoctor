@@ -130,22 +130,18 @@ export class MarkdownRenderer implements ReportRenderer {
 
     lines.push('# Dev Doctor — Health Report');
     lines.push('');
-    lines.push(
-      `> Generated · ${formatTimestamp(result.timestamp)} · ${result.durationMs}ms`,
-    );
+    lines.push(`> Generated · ${formatTimestamp(result.timestamp)} · ${result.durationMs}ms`);
     lines.push('');
 
     // Health score
     lines.push('## Health Score');
     lines.push('');
     const healthEmoji =
-      result.health.status === 'healthy'
-        ? '💚'
-        : result.health.status === 'degraded'
-          ? '💛'
-          : '❤️';
+      result.health.status === 'healthy' ? '💚' : result.health.status === 'degraded' ? '💛' : '❤️';
 
-    lines.push(`**${healthEmoji} ${result.health.status.charAt(0).toUpperCase() + result.health.status.slice(1)}** — ${result.health.percentage}%`);
+    lines.push(
+      `**${healthEmoji} ${result.health.status.charAt(0).toUpperCase() + result.health.status.slice(1)}** — ${result.health.percentage}%`,
+    );
     lines.push('');
     lines.push(`| Passed | Warnings | Failed | Total |`);
     lines.push(`|--------|----------|--------|-------|`);

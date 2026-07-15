@@ -31,7 +31,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { Plugin } from '../../core/types/plugin.js';
-import type { PluginRegistry } from '../../plugins/plugin-registry.js';
+import type { PluginRegistry } from '../../core/plugin-registry.js';
 import type { ResolvedConfig } from '../../core/types/config.js';
 
 // ── Built-in plugin manifest ──────────────────────────────────────
@@ -94,10 +94,7 @@ function isPlugin(value: unknown): value is Plugin {
  */
 async function loadPluginFromDir(pluginDir: string): Promise<Plugin | null> {
   // Try .js first (compiled output), then .ts (dev mode via tsx)
-  const candidates = [
-    path.join(pluginDir, 'index.js'),
-    path.join(pluginDir, 'index.ts'),
-  ];
+  const candidates = [path.join(pluginDir, 'index.js'), path.join(pluginDir, 'index.ts')];
 
   let modulePath: string | undefined;
   for (const candidate of candidates) {
@@ -111,10 +108,10 @@ async function loadPluginFromDir(pluginDir: string): Promise<Plugin | null> {
 
   try {
     const moduleUrl = pathToFileURL(modulePath).href;
-    const mod = await import(moduleUrl) as Record<string, unknown>;
+    const mod = (await import(moduleUrl)) as Record<string, unknown>;
 
     // Try each export in the module as a potential plugin constructor
-    for (const [exportName, exported] of Object.entries(mod)) {
+    for (const [, exported] of Object.entries(mod)) {
       // Try instantiating if it looks like a class
       if (typeof exported === 'function') {
         try {

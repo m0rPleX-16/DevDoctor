@@ -23,8 +23,8 @@ describe('env-scanner', () => {
   describe('parsePath', () => {
     it('should split paths correctly and validate directory existence', () => {
       const isWindows = process.platform === 'win32';
-      const pathValue = isWindows 
-        ? 'C:\\bin;C:\\Windows;D:\\nonexistent' 
+      const pathValue = isWindows
+        ? 'C:\\bin;C:\\Windows;D:\\nonexistent'
         : '/usr/bin:/bin:/nonexistent';
 
       // Mock fs.statSync to return directory or throw error

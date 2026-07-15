@@ -95,10 +95,7 @@ export async function collectSystemInfo(): Promise<SystemInfo> {
   const cpus = os.cpus();
 
   // Run npm version check and tool detection concurrently
-  const [npmResult, tools] = await Promise.all([
-    runCommand('npm', ['--version']),
-    detectTools(),
-  ]);
+  const [npmResult, tools] = await Promise.all([runCommand('npm', ['--version']), detectTools()]);
 
   const npmVersion = npmResult.success ? npmResult.stdout : undefined;
 
@@ -129,4 +126,3 @@ export async function collectSystemInfo(): Promise<SystemInfo> {
     tools,
   };
 }
-

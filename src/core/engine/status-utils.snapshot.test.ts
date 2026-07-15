@@ -84,19 +84,12 @@ describe('applyDependencySkips snapshots', () => {
   });
 
   it('warn dep — treated as not-pass, dependents skip', () => {
-    const checks = [
-      pass('install'),
-      warn('service', ['install']),
-      pass('port', ['service']),
-    ];
+    const checks = [pass('install'), warn('service', ['install']), pass('port', ['service'])];
     expect(applyDependencySkips(checks)).toMatchSnapshot();
   });
 
   it('unknown dep reference — check skips (dep not found = not pass)', () => {
-    const checks = [
-      pass('a'),
-      pass('b', ['does-not-exist']),
-    ];
+    const checks = [pass('a'), pass('b', ['does-not-exist'])];
     expect(applyDependencySkips(checks)).toMatchSnapshot();
   });
 

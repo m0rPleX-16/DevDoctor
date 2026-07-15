@@ -54,19 +54,21 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'HOME',
     category: 'system',
-    description: 'The current user\'s home directory. Many tools store configuration files here.',
+    description: "The current user's home directory. Many tools store configuration files here.",
     important: true,
   },
   {
     name: 'USERPROFILE',
     category: 'system',
-    description: 'Windows equivalent of HOME. Points to the user\'s profile directory (e.g., C:\\Users\\username).',
+    description:
+      "Windows equivalent of HOME. Points to the user's profile directory (e.g., C:\\Users\\username).",
     important: true,
   },
   {
     name: 'TEMP',
     category: 'system',
-    description: 'Directory for temporary files. Applications use this for caches and transient data.',
+    description:
+      'Directory for temporary files. Applications use this for caches and transient data.',
     important: false,
   },
   {
@@ -78,25 +80,29 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'SHELL',
     category: 'system',
-    description: 'The default shell program (e.g., /bin/bash, /bin/zsh). Determines how commands are interpreted.',
+    description:
+      'The default shell program (e.g., /bin/bash, /bin/zsh). Determines how commands are interpreted.',
     important: false,
   },
   {
     name: 'TERM',
     category: 'system',
-    description: 'The terminal type. Affects how colors and formatting are rendered in the terminal.',
+    description:
+      'The terminal type. Affects how colors and formatting are rendered in the terminal.',
     important: false,
   },
   {
     name: 'LANG',
     category: 'system',
-    description: 'System locale setting. Affects date formats, number formats, and character encoding.',
+    description:
+      'System locale setting. Affects date formats, number formats, and character encoding.',
     important: false,
   },
   {
     name: 'EDITOR',
     category: 'system',
-    description: 'The default text editor. Used by Git for commit messages and other tools that need a text editor.',
+    description:
+      'The default text editor. Used by Git for commit messages and other tools that need a text editor.',
     important: false,
   },
   {
@@ -111,7 +117,7 @@ const KNOWN_VARIABLES: Array<{
     name: 'NODE_ENV',
     category: 'node',
     description:
-      'Tells Node.js applications whether they\'re running in development or production mode. ' +
+      "Tells Node.js applications whether they're running in development or production mode. " +
       'Affects behavior like error verbosity, caching, and optimizations.',
     important: true,
   },
@@ -124,25 +130,29 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'NODE_OPTIONS',
     category: 'node',
-    description: 'Command-line flags that are automatically passed to the Node.js runtime (e.g., --max-old-space-size).',
+    description:
+      'Command-line flags that are automatically passed to the Node.js runtime (e.g., --max-old-space-size).',
     important: false,
   },
   {
     name: 'NPM_CONFIG_PREFIX',
     category: 'node',
-    description: 'Where npm installs global packages. Change this to install global packages without admin privileges.',
+    description:
+      'Where npm installs global packages. Change this to install global packages without admin privileges.',
     important: false,
   },
   {
     name: 'NPM_TOKEN',
     category: 'node',
-    description: 'Authentication token for npm registry. Used for publishing packages and accessing private registries.',
+    description:
+      'Authentication token for npm registry. Used for publishing packages and accessing private registries.',
     important: false,
   },
   {
     name: 'NVM_HOME',
     category: 'node',
-    description: 'Installation directory for Node Version Manager (nvm). Used to manage multiple Node.js versions.',
+    description:
+      'Installation directory for Node Version Manager (nvm). Used to manage multiple Node.js versions.',
     important: false,
   },
   {
@@ -164,7 +174,8 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'JRE_HOME',
     category: 'java',
-    description: 'Points to the Java Runtime Environment. Some applications look for this instead of JAVA_HOME.',
+    description:
+      'Points to the Java Runtime Environment. Some applications look for this instead of JAVA_HOME.',
     important: false,
   },
   {
@@ -176,7 +187,8 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'GRADLE_HOME',
     category: 'java',
-    description: 'Installation directory for Gradle, a modern build automation system for Java and other JVM languages.',
+    description:
+      'Installation directory for Gradle, a modern build automation system for Java and other JVM languages.',
     important: false,
   },
 
@@ -192,7 +204,8 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'PYTHONHOME',
     category: 'python',
-    description: 'The location of the Python standard library. Rarely set manually — usually auto-detected.',
+    description:
+      'The location of the Python standard library. Rarely set manually — usually auto-detected.',
     important: false,
   },
   {
@@ -214,7 +227,8 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'DOCKER_HOST',
     category: 'docker',
-    description: 'The Docker daemon socket. Usually unix:///var/run/docker.sock on Linux or npipe:////./pipe/docker_engine on Windows.',
+    description:
+      'The Docker daemon socket. Usually unix:///var/run/docker.sock on Linux or npipe:////./pipe/docker_engine on Windows.',
     important: true,
   },
   {
@@ -246,7 +260,8 @@ const KNOWN_VARIABLES: Array<{
   {
     name: 'GIT_SSH_COMMAND',
     category: 'git',
-    description: 'Custom SSH command for Git operations. Used to specify SSH keys or other SSH options.',
+    description:
+      'Custom SSH command for Git operations. Used to specify SSH keys or other SSH options.',
     important: false,
   },
 ];
@@ -265,9 +280,24 @@ const SECRET_NAME_PATTERN = /(TOKEN|SECRET|KEY|PASSWORD|API_KEY|CREDENTIAL|AUTH|
  * variable names like NODE_ENV, BUILD_KEY, etc.
  */
 const KNOWN_SAFE_VALUES = new Set([
-  'development', 'production', 'staging', 'test', 'true', 'false',
-  'yes', 'no', 'on', 'off', '0', '1', 'null', 'undefined',
-  'local', 'localhost', 'none', 'default',
+  'development',
+  'production',
+  'staging',
+  'test',
+  'true',
+  'false',
+  'yes',
+  'no',
+  'on',
+  'off',
+  '0',
+  '1',
+  'null',
+  'undefined',
+  'local',
+  'localhost',
+  'none',
+  'default',
 ]);
 
 /**
@@ -312,7 +342,6 @@ function detectPathRisks(entries: PathEntry[]): EnvSecurityRisk[] {
       if (!entry.exists) continue;
       try {
         const stat = fs.statSync(entry.path);
-        // eslint-disable-next-line no-bitwise
         const worldWritable = (stat.mode & 0o002) !== 0;
         if (worldWritable) {
           risks.push({
@@ -384,18 +413,16 @@ export function scanEnvironment(includeAll: boolean = false): EnvironmentInfo {
   const totalVarCount = Object.keys(env).length;
 
   // Collect known variables
-  const variables: EnvVariable[] = KNOWN_VARIABLES
-    .filter((def) => {
-      if (includeAll) return true;
-      return env[def.name] !== undefined;
-    })
-    .map((def) => ({
-      name: def.name,
-      value: env[def.name],
-      category: def.category,
-      description: def.description,
-      important: def.important,
-    }));
+  const variables: EnvVariable[] = KNOWN_VARIABLES.filter((def) => {
+    if (includeAll) return true;
+    return env[def.name] !== undefined;
+  }).map((def) => ({
+    name: def.name,
+    value: env[def.name],
+    category: def.category,
+    description: def.description,
+    important: def.important,
+  }));
 
   // In "all" mode, add any env vars that weren't in the known list
   if (includeAll) {
@@ -451,7 +478,7 @@ export function parsePath(pathValue: string): PathEntry[] {
     // Trim whitespace; treat a blank entry as "." (current directory)
     const raw = entry.trim();
     const normalizedPath = raw === '' ? '.' : path.normalize(raw);
-    let exists = false;
+    let exists: boolean;
 
     try {
       exists = fs.statSync(normalizedPath).isDirectory();

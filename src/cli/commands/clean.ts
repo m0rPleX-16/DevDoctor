@@ -32,11 +32,11 @@ import { theme, hr } from '../ui/formatter.js';
 
 // ── Paths ─────────────────────────────────────────────────────────
 
-const DEVDOCTOR_DIR   = path.join(os.homedir(), '.devdoctor');
-const SNAPSHOT_FILE   = path.join(DEVDOCTOR_DIR, 'snapshots', 'latest.json');
-const HISTORY_FILE    = path.join(DEVDOCTOR_DIR, 'runs.json');
-const AUDIT_FILE      = path.join(DEVDOCTOR_DIR, 'history.json');
-const LOCK_FILE       = path.join(DEVDOCTOR_DIR, 'fix.lock');
+const DEVDOCTOR_DIR = path.join(os.homedir(), '.devdoctor');
+const SNAPSHOT_FILE = path.join(DEVDOCTOR_DIR, 'snapshots', 'latest.json');
+const HISTORY_FILE = path.join(DEVDOCTOR_DIR, 'runs.json');
+const AUDIT_FILE = path.join(DEVDOCTOR_DIR, 'history.json');
+const LOCK_FILE = path.join(DEVDOCTOR_DIR, 'fix.lock');
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ async function runClean(
 
   // Show what exists
   const existing = targets.filter((t) => fs.existsSync(t.filePath));
-  const absent   = targets.filter((t) => !fs.existsSync(t.filePath));
+  const absent = targets.filter((t) => !fs.existsSync(t.filePath));
 
   if (existing.length === 0) {
     console.log(`  ${theme.muted('Nothing to clean. All targets are already absent.')}\n`);
@@ -106,7 +106,9 @@ async function runClean(
   if (absent.length > 0) {
     console.log();
     for (const t of absent) {
-      console.log(`  ${theme.muted('○')}  ${theme.muted(t.label)}  ${theme.muted('(not found — will be skipped)')}`);
+      console.log(
+        `  ${theme.muted('○')}  ${theme.muted(t.label)}  ${theme.muted('(not found — will be skipped)')}`,
+      );
     }
   }
   console.log();
@@ -114,7 +116,9 @@ async function runClean(
   if (!autoConfirm) {
     if (!process.stdin.isTTY) {
       console.log(`  ${theme.error('✖ Interactive mode requires a TTY.')}`);
-      console.log(`  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to confirm in non-interactive environments.')}\n`);
+      console.log(
+        `  ${theme.muted('Use')} ${chalk.white('--yes')} ${theme.muted('to confirm in non-interactive environments.')}\n`,
+      );
       process.exitCode = 1;
       return false;
     }
@@ -136,7 +140,9 @@ async function runClean(
       console.log(`  ${theme.success('✓')}  ${chalk.white(t.label)} ${theme.muted('deleted.')}`);
       anyDeleted = true;
     } else {
-      console.log(`  ${theme.error('✖')}  ${chalk.white(t.label)} ${theme.error('could not be deleted.')}`);
+      console.log(
+        `  ${theme.error('✖')}  ${chalk.white(t.label)} ${theme.error('could not be deleted.')}`,
+      );
       process.exitCode = 1;
     }
   }
@@ -187,7 +193,9 @@ interface CleanOptions {
 export function createCleanCommand(): Command {
   const clean = new Command('clean')
     .description('Remove Dev Doctor state files from ~/.devdoctor/.')
-    .addHelpText('after', `
+    .addHelpText(
+      'after',
+      `
 Subcommands:
   ${chalk.cyan('devdoctor clean snapshot')}   Delete the repair session snapshot (used by rollback)
   ${chalk.cyan('devdoctor clean history')}    Clear the doctor run history (runs.json)
@@ -197,7 +205,8 @@ Subcommands:
 
 Options:
   -y, --yes   Auto-confirm without prompting (for scripted environments)
-`);
+`,
+    );
 
   // ── clean snapshot ──
   clean
