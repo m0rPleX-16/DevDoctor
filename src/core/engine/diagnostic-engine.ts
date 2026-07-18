@@ -70,17 +70,22 @@ export class DiagnosticEngine {
   }
 
   /**
-   * Run diagnostics for ALL registered plugins concurrently.
+   * Run diagnostics for ALL registered plugins (or a specific subset) concurrently.
    *
    * ADR-0010: Uses Promise.allSettled() so plugins run in parallel and
    * a single failure doesn't prevent the remaining plugins from completing.
    * Each plugin is wrapped in a per-plugin timeout (default 30 s); a timed-out
    * plugin produces a 'skip' result rather than blocking the dashboard forever.
    *
-   * @returns Array of DiagnosticResult for all plugins, in registration order
+   * @param pluginNames - Optional array of plugin names to restrict execution to
+   * @returns Array of DiagnosticResult for plugins, in registration order
    */
-  async runAll(): Promise<DiagnosticResult[]> {
-    const plugins = this.registry.list();
+  async runAll(pluginNames?: string[]): Promise<DiagnosticResult[]> {
+    const plugins = pluginNames
+      ? pluginNames
+          .map((name) => this.registry.get(name))
+          .filter((p): p is NonNullable<typeof p> => p !== undefined)
+      : this.registry.list();
 
     const settlements = await Promise.allSettled(
       plugins.map((plugin) => this.runWithTimeout(plugin.name)),
@@ -92,7 +97,7 @@ export class DiagnosticEngine {
         results.push(settled.value);
       }
       // Rejected settlements are already handled inside runWithTimeout —
-      // it never rejects, it always resolves to a DiagnosticResult.
+      // it never resolves to a rejected promise.
     }
 
     return results;

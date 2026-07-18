@@ -5,6 +5,15 @@ import { MysqlPlugin } from './mysql/index.js';
 import { GitPlugin } from './git/index.js';
 import { RedisPlugin } from './redis/index.js';
 import { PythonPlugin } from './python/index.js';
+import { NextjsPlugin } from './nextjs/index.js';
+import { DjangoPlugin } from './django/index.js';
+import { LaravelPlugin } from './laravel/index.js';
+import { ExpressPlugin } from './express/index.js';
+import { FastapiPlugin } from './fastapi/index.js';
+import { JavaPlugin } from './java/index.js';
+import { CppPlugin } from './cpp/index.js';
+import { CsharpPlugin } from './csharp/index.js';
+import { PhpPlugin } from './php/index.js';
 
 /**
  * Generic test suite to validate that any Plugin implementation
@@ -22,6 +31,7 @@ export function testPluginContract(plugin: Plugin, timeout = 10_000) {
       expect(plugin.displayName.length).toBeGreaterThan(0);
       expect(typeof plugin.description).toBe('string');
       expect(plugin.description.length).toBeGreaterThan(0);
+      expect(['language', 'framework', 'database', 'tool']).toContain(plugin.category);
     });
 
     it('has valid projectMarkers when declared', () => {
@@ -88,3 +98,12 @@ testPluginContract(new MysqlPlugin());
 testPluginContract(new GitPlugin());
 testPluginContract(new RedisPlugin());
 testPluginContract(new PythonPlugin(), 15_000);
+testPluginContract(new NextjsPlugin());
+testPluginContract(new DjangoPlugin());
+testPluginContract(new LaravelPlugin());
+testPluginContract(new ExpressPlugin());
+testPluginContract(new FastapiPlugin(), 15_000);
+testPluginContract(new JavaPlugin(), 15_000);
+testPluginContract(new CppPlugin(), 15_000);
+testPluginContract(new CsharpPlugin(), 15_000);
+testPluginContract(new PhpPlugin(), 15_000);

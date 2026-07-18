@@ -30,7 +30,7 @@ _${binName.replace(/-/g, '_')}_completions() {
   local prev="\${COMP_WORDS[COMP_CWORD-1]}"
   local pprev="\${COMP_WORDS[COMP_CWORD-2]}"
   local commands="diagnose fix doctor info env history rollback config clean completion"
-  local plugins="node mysql git redis python"
+  local plugins="node mysql git redis python nextjs django laravel express fastapi java cpp csharp php"
 
   case "\${pprev}" in
     config)
@@ -86,7 +86,7 @@ function fishScript(binName: string): string {
 # Save to: ~/.config/fish/completions/${binName}.fish
 
 set -l commands diagnose fix doctor info env history rollback config clean completion
-set -l plugins node mysql git redis python
+set -l plugins node mysql git redis python nextjs django laravel express fastapi java cpp csharp php
 set -l formats terminal json markdown
 set -l clean_subs snapshot history audit lock all
 set -l config_subs init show path
@@ -109,6 +109,7 @@ complete -c ${binName} -n "__fish_seen_subcommand_from clean"      -a "$clean_su
 complete -c ${binName} -n "__fish_seen_subcommand_from completion" -a "bash zsh fish pwsh"
 complete -c ${binName} -n "__fish_seen_subcommand_from diagnose doctor history" -l format -s f -a "$formats" -d "Output format"
 complete -c ${binName} -n "__fish_seen_subcommand_from diagnose doctor" -l output -s o -d "Write report to file"
+complete -c ${binName} -n "__fish_seen_subcommand_from doctor" -l all -s a -d "Check all plugins, ignoring project detection context"
 complete -c ${binName} -n "__fish_seen_subcommand_from diagnose" -l verbose -s v -d "Show detailed output"
 complete -c ${binName} -n "__fish_seen_subcommand_from fix"      -l yes     -s y -d "Auto-confirm repairs"
 complete -c ${binName} -n "__fish_seen_subcommand_from fix"      -l dry-run      -d "Preview without applying"
@@ -130,7 +131,7 @@ Register-ArgumentCompleter -Native -CommandName '${binName}' -ScriptBlock {
   param($wordToComplete, $commandAst, $cursorPosition)
 
   $commands    = @('diagnose', 'fix', 'doctor', 'info', 'env', 'history', 'rollback', 'config', 'clean', 'completion')
-  $plugins     = @('node', 'mysql', 'git', 'redis', 'python')
+  $plugins     = @('node', 'mysql', 'git', 'redis', 'python', 'nextjs', 'django', 'laravel', 'express', 'fastapi', 'java', 'cpp', 'csharp', 'php')
   $formats     = @('terminal', 'json', 'markdown')
   $cleanSubs   = @('snapshot', 'history', 'audit', 'lock', 'all')
   $configSubs  = @('init', 'show', 'path')

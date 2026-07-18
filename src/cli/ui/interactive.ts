@@ -18,6 +18,8 @@
 import readline from 'node:readline';
 import { theme } from './formatter.js';
 import chalk from 'chalk';
+import type { Plugin } from '../../core/types/plugin.js';
+import { detectProjectContext } from '../../infra/system/project-detector.js';
 
 // ── Menu items ────────────────────────────────────────────────────
 
@@ -27,76 +29,88 @@ interface MenuItem {
   description: string;
   /** The CLI args to run when this item is selected */
   args: string[];
+  /** Optional group key for visual separation */
+  group?: 'primary' | 'utility' | 'exit';
 }
 
-function buildMenuItems(pluginNames: string[]): MenuItem[] {
-  const pluginList = pluginNames.join(', ');
+function buildMenuItems(): MenuItem[] {
   return [
     {
       icon: theme.success('❖'),
       label: 'Full health check',
       description: 'doctor — runs all plugins and shows a health dashboard',
       args: ['doctor'],
+      group: 'primary',
     },
     {
       icon: theme.primary('⌕'),
       label: 'Diagnose a plugin',
-      description: `diagnose — choose from: ${pluginList}`,
+      description: 'diagnose — choose a specific plugin to run diagnostics',
       args: ['diagnose'],
+      group: 'primary',
     },
     {
       icon: theme.warning('⚒'),
       label: 'Fix issues',
-      description: `fix — choose from: ${pluginList}`,
+      description: 'fix — choose a specific plugin to run automated repairs',
       args: ['fix'],
+      group: 'primary',
     },
     {
       icon: theme.accent('ℹ'),
       label: 'System info',
       description: 'info — OS, CPU, memory, runtime, detected tools',
       args: ['info'],
+      group: 'primary',
     },
     {
       icon: theme.accent('☰'),
       label: 'Environment variables',
       description: 'env — PATH breakdown and security check',
       args: ['env'],
+      group: 'primary',
     },
     {
       icon: theme.accent('⧉'),
       label: 'Health history',
       description: 'history — view timeline of past health check scores',
       args: ['history'],
+      group: 'primary',
     },
     {
       icon: theme.highlight('↺'),
       label: 'Roll back a repair',
       description: 'rollback — undo the last session or a specific repair',
       args: ['rollback'],
+      group: 'utility',
     },
     {
       icon: theme.secondary('⚙'),
       label: 'Configuration',
       description: 'config — init, show, or inspect config file paths',
       args: ['config'],
+      group: 'utility',
     },
     {
       icon: theme.muted('◇'),
       label: 'Clean state files',
       description: 'clean — remove snapshot, history, audit log, or lock file',
       args: ['clean'],
+      group: 'utility',
     },
     {
       icon: theme.accent('⇥'),
       label: 'Shell completions',
       description: 'completion — generate shell tab-completion scripts',
       args: ['completion'],
+      group: 'utility',
     },
     {
       icon: theme.error('×'),
       label: 'Exit',
-      description: 'exit — quit the interactive Dev Doctor CLI',
+      description: 'Quit the interactive Dev Doctor CLI',
       args: ['exit'],
+      group: 'exit',
     },
   ];
 }
@@ -104,31 +118,51 @@ function buildMenuItems(pluginNames: string[]): MenuItem[] {
 // ── Rendering ─────────────────────────────────────────────────────
 
 function renderMenu(items: MenuItem[], selected: number): void {
-  // Move cursor up by the number of lines we previously rendered, if any
   process.stdout.write('\x1B[?25l'); // Hide cursor while rendering
 
   const lines: string[] = [];
-  lines.push(`  ${theme.muted('Use ↑ ↓ arrows to navigate, Enter to select, Esc/q to exit.')}`);
+
+  // Navigation hint — subtle and compact
+  lines.push(
+    `  ${theme.muted('↑↓')} ${theme.muted('navigate')}    ` +
+      `${theme.muted('⏎')} ${theme.muted('select')}    ` +
+      `${theme.muted('esc')} ${theme.muted('quit')}`,
+  );
   lines.push('');
+
+  let prevGroup: string | undefined;
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const isSelected = i === selected;
 
-    const cursor = isSelected ? chalk.hex('#36BCF7')('❯') : theme.muted(' ');
+    // Group separator
+    if (item.group && item.group !== prevGroup && prevGroup !== undefined) {
+      if (item.group === 'exit') {
+        lines.push(`  ${theme.muted('─'.repeat(40))}`);
+      } else {
+        lines.push(`  ${theme.muted('·'.repeat(40))}`);
+      }
+    }
+    prevGroup = item.group;
 
+    const cursor = isSelected ? chalk.hex('#36BCF7')('❯') : ' ';
     const icon = item.icon;
-    const label = isSelected ? chalk.hex('#36BCF7').bold(item.label) : chalk.white(item.label);
 
-    const desc = isSelected ? theme.muted(`  ${item.description}`) : '';
-
-    lines.push(`  ${cursor}  ${icon}  ${label}`);
-    if (desc) lines.push(`        ${desc}`);
+    if (isSelected) {
+      const label = chalk.hex('#36BCF7').bold(item.label);
+      const desc = theme.muted(item.description);
+      lines.push(`  ${cursor}  ${icon}  ${label}`);
+      lines.push(`        ${chalk.hex('#818CF8')('└')} ${desc}`);
+    } else {
+      const label = chalk.white(item.label);
+      lines.push(`  ${cursor}  ${icon}  ${label}`);
+    }
   }
 
   lines.push('');
   lines.push(
-    `  ${theme.muted('Tip: Run')} ${chalk.white('devdoctor --help')} ${theme.muted('or')} ${chalk.white('devdoctor <command> --help')} ${theme.muted('for advanced flags.')}`,
+    `  ${theme.muted('Tip:')} ${chalk.hex('#A78BFA')('devdoctor <command> --help')} ${theme.muted('for advanced flags')}`,
   );
   lines.push('');
 
@@ -142,33 +176,92 @@ function clearLines(count: number): void {
 }
 
 function lineCount(items: MenuItem[], selected: number): number {
-  // renderMenu writes:
-  //   1  header line
-  //   1  blank
-  //   N  one line per item
-  //   1  description line for the selected item (always emitted)
-  //   1  blank
-  //   1  tip line
-  //   1  trailing blank (from the final \n after lines.join('\n'))
-  // Total = items.length + 6, which matches what process.stdout.write outputs.
-  // The selected param is unused but kept for API compatibility.
+  // Base lines: 1 header + 1 blank + N items + 1 blank + 1 tip + 1 trailing
+  let count = items.length + 5;
+
+  // The selected item adds an extra description line
   void selected;
-  return items.length + 6;
+  count += 1;
+
+  // Count group separators
+  let prevGroup: string | undefined;
+  for (const item of items) {
+    if (item.group && item.group !== prevGroup && prevGroup !== undefined) {
+      count += 1;
+    }
+    prevGroup = item.group;
+  }
+
+  return count;
 }
 
 // ── Plugin sub-menu ───────────────────────────────────────────────
 
-/** Prompt user to pick a plugin from a simple numbered list. Returns null if aborted. */
-async function pickPlugin(pluginNames: string[], verb: string): Promise<string | null> {
+/** Prompt user to pick a plugin from a structured category list. Returns null if aborted. */
+async function pickPlugin(plugins: Plugin[], verb: string): Promise<string | null> {
   return new Promise((resolve) => {
     process.stdout.write('\n');
     process.stdout.write(`  ${theme.muted(`Which plugin would you like to ${verb}?`)}\n\n`);
 
-    pluginNames.forEach((name, i) => {
-      process.stdout.write(`    ${theme.primary(`${i + 1}.`)}  ${chalk.white(name)}\n`);
-    });
+    const PLUGIN_CATEGORY_LABELS: Record<string, string> = {
+      language: 'Languages',
+      framework: 'Frameworks',
+      database: 'Databases',
+      tool: 'Tools & Utilities',
+    };
 
-    process.stdout.write('\n');
+    const projectCtx = detectProjectContext(plugins);
+    const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
+
+    const detected: Plugin[] = [];
+    const others: Plugin[] = [];
+    for (const p of plugins) {
+      if (projectCtx.detectedPlugins.has(p.name)) {
+        detected.push(p);
+      } else {
+        others.push(p);
+      }
+    }
+
+    let flatIndex = 1;
+    const indexToPluginMap = new Map<number, Plugin>();
+
+    const renderSubList = (list: Plugin[], sectionHeader: string) => {
+      if (list.length === 0) return;
+      process.stdout.write(`    ${chalk.hex('#86efac').bold(sectionHeader)}\n`);
+
+      // Group by category
+      const subGrouped = new Map<string, Plugin[]>();
+      for (const p of list) {
+        const clist = subGrouped.get(p.category) ?? [];
+        clist.push(p);
+        subGrouped.set(p.category, clist);
+      }
+
+      const categoriesOrder = ['language', 'framework', 'database', 'tool'];
+      for (const cat of categoriesOrder) {
+        const catPlugins = subGrouped.get(cat);
+        if (!catPlugins || catPlugins.length === 0) continue;
+
+        process.stdout.write(`      ${chalk.bold(PLUGIN_CATEGORY_LABELS[cat] || cat)}\n`);
+        for (const p of catPlugins) {
+          process.stdout.write(
+            `        ${theme.primary(`${flatIndex}.`)}  ${chalk.white(p.displayName.padEnd(12))} ${theme.muted(`(${p.name})`)}\n`,
+          );
+          indexToPluginMap.set(flatIndex, p);
+          flatIndex++;
+        }
+      }
+      process.stdout.write('\n');
+    };
+
+    if (hasAnyDetected) {
+      renderSubList(detected, '▸ Detected in this project');
+      renderSubList(others, '▸ Other plugins');
+    } else {
+      renderSubList(plugins, '▸ Available plugins');
+    }
+
     process.stdout.write(`  ${theme.muted('Enter number (or press Esc to go back): ')}`);
 
     const rl = readline.createInterface({
@@ -201,11 +294,12 @@ async function pickPlugin(pluginNames: string[], verb: string): Promise<string |
 
       // Enter
       if (key === '\r' || key === '\n') {
-        const idx = parseInt(buf, 10) - 1;
+        const idx = parseInt(buf, 10);
         cleanup();
         process.stdout.write('\n');
-        if (idx >= 0 && idx < pluginNames.length) {
-          resolve(pluginNames[idx]);
+        const matchedPlugin = indexToPluginMap.get(idx);
+        if (matchedPlugin) {
+          resolve(matchedPlugin.name);
         } else {
           resolve(null);
         }
@@ -355,14 +449,36 @@ async function askFixOptions(): Promise<string[]> {
  * Gather interactive options for the `doctor` command.
  * Returns extra argv flags to append.
  */
-async function askDoctorOptions(): Promise<string[]> {
+async function askDoctorOptions(hasAnyDetected: boolean): Promise<string[]> {
+  const flags: string[] = [];
+
+  if (hasAnyDetected) {
+    const scope = await askChoice('Which plugins would you like to check?', [
+      {
+        key: '1',
+        label: 'Project footprint only (default) — check only detected plugins',
+        value: 'project',
+      },
+      {
+        key: '2',
+        label: 'All plugins                     — run all registered checks',
+        value: 'all',
+      },
+    ]);
+    if (scope === 'all') {
+      flags.push('--all');
+    }
+  }
+
   const format = await askChoice('Output format?', [
     { key: '1', label: 'terminal  — colour dashboard (default)', value: 'terminal' },
     { key: '2', label: 'json      — machine-readable JSON', value: 'json' },
     { key: '3', label: 'markdown  — GitHub-Flavoured Markdown', value: 'markdown' },
   ]);
-  if (!format || format === 'terminal') return [];
-  return ['--format', format];
+  if (format && format !== 'terminal') {
+    flags.push('--format', format);
+  }
+  return flags;
 }
 
 /**
@@ -482,10 +598,7 @@ const ROLLBACK_SUPPORTED_CHECKS: Record<string, string[]> = {
  * falls through to plugin/check picker for a targeted rollback.
  * Returns full argv, or null to cancel.
  */
-async function askRollbackOptions(
-  pluginNames: string[],
-  baseArgv: string[],
-): Promise<string[] | null> {
+async function askRollbackOptions(plugins: Plugin[], baseArgv: string[]): Promise<string[] | null> {
   // First ask: session rollback vs specific check
   const mode = await askChoice('What would you like to roll back?', [
     {
@@ -511,7 +624,7 @@ async function askRollbackOptions(
   }
 
   // Specific check path
-  const plugin = await pickPlugin(pluginNames, 'roll back');
+  const plugin = await pickPlugin(plugins, 'roll back');
   if (!plugin) return null;
 
   const supportedChecks = ROLLBACK_SUPPORTED_CHECKS[plugin];
@@ -585,14 +698,14 @@ async function askConfigOptions(): Promise<string[]> {
  *
  * Returns null if the user exits without selecting (Esc / q).
  *
- * @param pluginNames - Names of all registered plugins
+ * @param plugins     - All registered Plugin instances
  * @param baseArgv    - The original process.argv slice (first two entries: node + script)
  */
 export async function runInteractiveMenu(
-  pluginNames: string[],
+  plugins: Plugin[],
   baseArgv: string[],
 ): Promise<string[] | null> {
-  const items = buildMenuItems(pluginNames);
+  const items = buildMenuItems();
   let selected = 0;
   let rendered = false;
   let renderedLineCount = 0;
@@ -639,7 +752,7 @@ export async function runInteractiveMenu(
 
         // Commands that need a plugin argument
         if (item.args[0] === 'diagnose' || item.args[0] === 'fix') {
-          const plugin = await pickPlugin(pluginNames, item.args[0]);
+          const plugin = await pickPlugin(plugins, item.args[0]);
           if (!plugin) {
             // User bailed — restart menu
             process.stdin.setRawMode(true);
@@ -659,7 +772,9 @@ export async function runInteractiveMenu(
 
           resolve([...baseArgv, item.args[0], plugin, ...extraFlags]);
         } else if (item.args[0] === 'doctor') {
-          const extraFlags = await askDoctorOptions();
+          const projectCtx = detectProjectContext(plugins);
+          const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
+          const extraFlags = await askDoctorOptions(hasAnyDetected);
           resolve([...baseArgv, 'doctor', ...extraFlags]);
         } else if (item.args[0] === 'info') {
           const extraFlags = await askInfoOptions();
@@ -671,7 +786,7 @@ export async function runInteractiveMenu(
           const extraFlags = await askHistoryOptions();
           resolve([...baseArgv, 'history', ...extraFlags]);
         } else if (item.args[0] === 'rollback') {
-          const argv = await askRollbackOptions(pluginNames, baseArgv);
+          const argv = await askRollbackOptions(plugins, baseArgv);
           if (!argv) {
             // User bailed — restart menu
             process.stdin.setRawMode(true);

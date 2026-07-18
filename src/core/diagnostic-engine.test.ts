@@ -95,6 +95,19 @@ describe('DiagnosticEngine', () => {
       expect(results).toHaveLength(2);
     });
 
+    it('should return results only for specified plugins', async () => {
+      registry.register(createSuccessPlugin('node'));
+      registry.register(createSuccessPlugin('mysql'));
+      registry.register(createSuccessPlugin('git'));
+
+      const results = await engine.runAll(['node', 'git']);
+
+      expect(results).toHaveLength(2);
+      expect(results.map((r) => r.pluginName)).toContain('node');
+      expect(results.map((r) => r.pluginName)).toContain('git');
+      expect(results.map((r) => r.pluginName)).not.toContain('mysql');
+    });
+
     it('should return an empty array when no plugins are registered', async () => {
       const results = await engine.runAll();
       expect(results).toEqual([]);

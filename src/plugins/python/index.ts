@@ -33,6 +33,7 @@ export class PythonPlugin implements Plugin {
   readonly name = 'python';
   readonly displayName = 'Python';
   readonly description = 'Diagnoses your Python development environment.';
+  readonly category = 'language';
   readonly projectMarkers = [
     'requirements.txt',
     'pyproject.toml',

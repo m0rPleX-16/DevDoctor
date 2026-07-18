@@ -149,10 +149,6 @@ export function showBanner(): void {
 
   console.log(boxBottom(innerWidth));
   console.log();
-  console.log(
-    `  ${theme.muted('Run')} ${chalk.white('devdoctor --help')} ${theme.muted('for available commands.')}`,
-  );
-  console.log();
 }
 
 /**

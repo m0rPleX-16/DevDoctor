@@ -1,6 +1,6 @@
 {
   "name": "@m0rplex-16/devdoctor",
-  "version": "0.4.9",
+  "version": "0.5.0",
   "description": "A plugin-based CLI utility that diagnoses, explains, and safely repairs common development environment issues.",
   "repository": {
     "type": "git",
