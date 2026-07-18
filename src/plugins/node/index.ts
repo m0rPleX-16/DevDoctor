@@ -43,6 +43,7 @@ export class NodePlugin implements Plugin {
   readonly name = 'node';
   readonly displayName = 'Node.js';
   readonly description = 'Diagnoses your Node.js development environment.';
+  readonly category = 'language';
   readonly projectMarkers = ['package.json', '.nvmrc', '.node-version', 'node_modules'];
 
   async diagnose(): Promise<DiagnosticResult> {

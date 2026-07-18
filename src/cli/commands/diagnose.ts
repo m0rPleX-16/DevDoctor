@@ -37,27 +37,28 @@ function renderCheck(check: DiagnosticCheck, verbose: boolean, isLast: boolean):
   const treeIndent = isLast ? '   ' : theme.muted('│') + '  ';
 
   console.log(`  ${treeLine} ${badge}  ${label}`);
-  console.log(`  ${treeIndent} ${theme.muted(check.message)}`);
-  // #6: when a check was skipped due to a dependency, show a dim cascade indicator
+  console.log(`  ${treeIndent}    ${theme.muted(check.message)}`);
+  // When a check was skipped due to a dependency, show a dim cascade indicator
   if (check.status === 'skip' && check.message.toLowerCase().includes('depends on')) {
-    console.log(`  ${treeIndent} ${theme.muted('↳ blocked by a failed upstream check')}`);
+    console.log(`  ${treeIndent}    ${theme.muted('↳ blocked by a failed upstream check')}`);
   }
 
   if (verbose || check.status !== 'pass') {
     if (check.detail) {
-      console.log(`  ${treeIndent}`);
       for (const line of check.detail.split('\n')) {
-        console.log(`  ${treeIndent} ${theme.muted(line)}`);
+        console.log(`  ${treeIndent}    ${theme.muted(line)}`);
       }
     }
   }
 
   if (check.suggestion && check.status !== 'pass') {
     console.log(`  ${treeIndent}`);
-    const suggLines = ('✦ ' + check.suggestion).split('\n');
-    console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')(suggLines[0])}`);
+    const suggLines = check.suggestion.split('\n');
+    console.log(
+      `  ${treeIndent}    ${chalk.hex('#A78BFA')('✦')} ${chalk.hex('#A78BFA')(suggLines[0])}`,
+    );
     for (let i = 1; i < suggLines.length; i++) {
-      console.log(`  ${treeIndent} ${chalk.hex('#A78BFA')(suggLines[i])}`);
+      console.log(`  ${treeIndent}      ${chalk.hex('#A78BFA')(suggLines[i])}`);
     }
   }
 
@@ -167,30 +168,30 @@ export function createDiagnoseCommand(engine: DiagnosticEngine, config?: Resolve
 
       console.log();
       console.log(`  ${hr(undefined, 48)}`);
-      console.log();
 
       const passCount = result.checks.filter((c) => c.status === 'pass').length;
       const warnCount = result.checks.filter((c) => c.status === 'warn').length;
       const failCount = result.checks.filter((c) => c.status === 'fail').length;
 
-      const summary = [
-        theme.success(`${passCount} passed`),
-        warnCount > 0 ? theme.warning(`${warnCount} warnings`) : null,
-        failCount > 0 ? theme.error(`${failCount} failed`) : null,
+      const tallies = [
+        `${theme.success('●')} ${theme.success(`${passCount} passed`)}`,
+        warnCount > 0 ? `${theme.warning('▲')} ${theme.warning(`${warnCount} warnings`)}` : null,
+        failCount > 0 ? `${theme.error('✖')} ${theme.error(`${failCount} failed`)}` : null,
       ]
         .filter(Boolean)
-        .join(theme.muted(' · '));
+        .join('   ');
 
-      console.log(`  ${summary}`);
+      console.log();
+      console.log(`  ${tallies}`);
       console.log();
 
-      // Item 2: only show the --verbose tip when there's suppressed detail to reveal
+      // Only show the --verbose tip when there's suppressed detail to reveal
       const hasHiddenDetail =
         !verbose &&
         result.checks.some((c) => c.status === 'pass' && c.detail && c.detail.trim().length > 0);
       if (hasHiddenDetail) {
         console.log(
-          `  ${theme.muted('Tip: Use')} ${chalk.white('--verbose')} ${theme.muted('to see detailed explanations for all checks.')}`,
+          `  ${theme.muted('Tip:')} ${chalk.hex('#A78BFA')('--verbose')} ${theme.muted('shows detailed explanations for passing checks')}`,
         );
         console.log();
       }

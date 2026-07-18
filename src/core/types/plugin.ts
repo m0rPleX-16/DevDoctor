@@ -29,8 +29,11 @@ export interface Plugin {
   /** Human-readable name for display (e.g., "Node.js", "MySQL") */
   displayName: string;
 
-  /** Short description of what this plugin checks */
+  /** short description of what this plugin checks */
   description: string;
+
+  /** Category of this plugin (e.g. language, framework, database, tool) */
+  category: 'language' | 'framework' | 'database' | 'tool';
 
   /**
    * File or directory names that indicate this plugin is relevant to the

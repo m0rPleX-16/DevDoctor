@@ -43,6 +43,15 @@ import { MysqlPlugin } from '../../plugins/mysql/index.js';
 import { GitPlugin } from '../../plugins/git/index.js';
 import { RedisPlugin } from '../../plugins/redis/index.js';
 import { PythonPlugin } from '../../plugins/python/index.js';
+import { NextjsPlugin } from '../../plugins/nextjs/index.js';
+import { DjangoPlugin } from '../../plugins/django/index.js';
+import { LaravelPlugin } from '../../plugins/laravel/index.js';
+import { ExpressPlugin } from '../../plugins/express/index.js';
+import { FastapiPlugin } from '../../plugins/fastapi/index.js';
+import { JavaPlugin } from '../../plugins/java/index.js';
+import { CppPlugin } from '../../plugins/cpp/index.js';
+import { CsharpPlugin } from '../../plugins/csharp/index.js';
+import { PhpPlugin } from '../../plugins/php/index.js';
 
 const BUILTIN_PLUGINS: Plugin[] = [
   new NodePlugin(),
@@ -50,6 +59,15 @@ const BUILTIN_PLUGINS: Plugin[] = [
   new GitPlugin(),
   new RedisPlugin(),
   new PythonPlugin(),
+  new NextjsPlugin(),
+  new DjangoPlugin(),
+  new LaravelPlugin(),
+  new ExpressPlugin(),
+  new FastapiPlugin(),
+  new JavaPlugin(),
+  new CppPlugin(),
+  new CsharpPlugin(),
+  new PhpPlugin(),
 ];
 
 // ── Runtime type guard ────────────────────────────────────────────
@@ -70,6 +88,7 @@ function isPlugin(value: unknown): value is Plugin {
     obj.name.length > 0 &&
     typeof obj.displayName === 'string' &&
     typeof obj.description === 'string' &&
+    typeof obj.category === 'string' &&
     typeof obj.diagnose === 'function' &&
     typeof obj.repair === 'function' &&
     typeof obj.verify === 'function'

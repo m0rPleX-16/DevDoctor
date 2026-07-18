@@ -32,6 +32,7 @@ export class RedisPlugin implements Plugin {
   readonly name = 'redis';
   readonly displayName = 'Redis';
   readonly description = 'Diagnoses your Redis in-memory data store.';
+  readonly category = 'database';
   readonly projectMarkers = ['redis.conf', 'docker-compose.yml', 'docker-compose.yaml', '.env'];
 
   async diagnose(): Promise<DiagnosticResult> {

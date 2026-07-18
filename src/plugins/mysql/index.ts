@@ -85,6 +85,7 @@ export class MysqlPlugin implements Plugin {
   readonly name = 'mysql';
   readonly displayName = 'MySQL';
   readonly description = 'Diagnoses your MySQL local database environment.';
+  readonly category = 'database';
   readonly projectMarkers = [
     'docker-compose.yml',
     'docker-compose.yaml',

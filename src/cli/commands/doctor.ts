@@ -86,6 +86,7 @@ function healthDisplay(status: HealthStatus) {
 interface DoctorOptions {
   format?: ReportFormat;
   output?: string;
+  all?: boolean;
 }
 
 export function createDoctorCommand(
@@ -97,6 +98,10 @@ export function createDoctorCommand(
   return new Command('doctor')
     .description('Run a full health check across all plugins and tools.')
     .option(
+      '-a, --all',
+      'Run diagnostics for all plugins, ignoring project directory detection context',
+    )
+    .option(
       '-f, --format <format>',
       'Output format: terminal (default), json, markdown',
       config?.defaultFormat ?? 'terminal',
@@ -104,13 +109,26 @@ export function createDoctorCommand(
     .option('-o, --output <file>', 'Write report to a file instead of stdout')
     .action(async (options: DoctorOptions) => {
       const format: ReportFormat = options.format ?? config?.defaultFormat ?? 'terminal';
+      const runAllPlugins = options.all ?? false;
 
       if (format === 'terminal') showCompactBanner();
 
       const startTime = performance.now();
       const spinner = format === 'terminal' ? createSpinner('Running full health check...') : null;
 
-      const [diagnostics, tools] = await Promise.all([engine.runAll(), detectTools()]);
+      const allPlugins = registry?.list() ?? [];
+      const projectCtx =
+        allPlugins.length > 0
+          ? detectProjectContext(allPlugins)
+          : { detectedPlugins: new Set<string>(), matchedMarkers: {} };
+
+      const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
+
+      // Smart filter: only run detected plugins unless --all is passed, or no plugins are detected
+      const pluginsToRun =
+        runAllPlugins || !hasAnyDetected ? undefined : Array.from(projectCtx.detectedPlugins);
+
+      const [diagnostics, tools] = await Promise.all([engine.runAll(pluginsToRun), detectTools()]);
 
       const durationMs = Math.round(performance.now() - startTime);
       const health = calculateHealthScore(diagnostics);
@@ -174,15 +192,23 @@ export function createDoctorCommand(
       console.log();
       console.log(sectionHeader('Health Score', icon));
       console.log(connector());
+
+      // Large percentage readout
+      const pctStr = `${health.percentage}%`;
+      console.log(
+        `  ${theme.muted('│')}  ${colorFn.bold(pctStr)} ${theme.muted('overall health')}`,
+      );
       console.log(`  ${theme.muted('│')}  ${progressBar(health.percentage, 30, { invert: true })}`);
       console.log(
-        `  ${theme.muted('│')}  ${colorFn(label)} ${theme.muted('·')} ${theme.muted(`${health.totalChecks} checks in ${durationMs}ms`)}`,
+        `  ${theme.muted('│')}  ${colorFn(label)} ${theme.muted('·')} ${theme.muted(`${health.totalChecks} checks`)} ${theme.muted('·')} ${theme.muted(`${durationMs}ms`)}`,
       );
       console.log(connector());
+
+      // Tally row with aligned columns
       console.log(
-        `  ${theme.muted('│')}  ${theme.success(`${health.passedChecks} passed`)}` +
-          `  ${theme.muted('·')}  ${theme.warning(`${health.warningChecks} warnings`)}` +
-          `  ${theme.muted('·')}  ${theme.error(`${health.failedChecks} failed`)}`,
+        `  ${theme.muted('│')}  ${theme.success('●')} ${theme.success(`${health.passedChecks} passed`)}` +
+          `   ${theme.warning('▲')} ${theme.warning(`${health.warningChecks} warnings`)}` +
+          `   ${theme.error('✖')} ${theme.error(`${health.failedChecks} failed`)}`,
       );
 
       if (diagnostics.length > 0) {
@@ -191,8 +217,6 @@ export function createDoctorCommand(
         console.log(connector());
 
         // ── Project-context grouping ──────────────────────────────
-        // Detect which plugins have markers present in the current directory.
-        // If the registry was passed, group results into detected vs other.
         const allPlugins = registry?.list() ?? [];
         const projectCtx =
           allPlugins.length > 0
@@ -201,9 +225,15 @@ export function createDoctorCommand(
 
         const hasAnyDetected = projectCtx.detectedPlugins.size > 0;
 
-        // Partition results: detected in project vs not detected
         const detected = diagnostics.filter((r) => projectCtx.detectedPlugins.has(r.pluginName));
         const others = diagnostics.filter((r) => !projectCtx.detectedPlugins.has(r.pluginName));
+
+        const CATEGORY_ICONS: Record<string, string> = {
+          language: chalk.hex('#36BCF7')('◆'),
+          framework: chalk.hex('#A78BFA')('◆'),
+          database: chalk.hex('#22C55E')('◆'),
+          tool: chalk.hex('#6B7280')('◆'),
+        };
 
         const renderPluginResult = (result: DiagnosticResult, isDetected: boolean) => {
           const badge = statusBadge(result.overallStatus);
@@ -218,12 +248,10 @@ export function createDoctorCommand(
               ? theme.muted(` (${projectCtx.matchedMarkers[result.pluginName].join(', ')})`)
               : '';
           console.log(
-            `  ${theme.muted('│')}  ${badge}  ${name}${relevanceTag}${markers}  ` +
+            `  ${theme.muted('│')}    ${badge}  ${name}${relevanceTag}${markers}  ` +
               `${theme.muted('·')}  ${theme.muted(`${result.checks.length} checks`)}  ` +
               `${theme.muted('·')}  ${theme.muted(`${result.durationMs}ms`)}`,
           );
-          // For detected plugins, show failing/warning check details inline.
-          // For "other" plugins, skip is noise — only show actual fail/warn, not skips.
           if (result.overallStatus !== 'pass') {
             for (const check of result.checks) {
               const showInline = isDetected
@@ -231,25 +259,62 @@ export function createDoctorCommand(
                 : check.status === 'fail' || check.status === 'warn';
               if (showInline) {
                 console.log(
-                  `  ${theme.muted('│')}     ${statusBadge(check.status)}  ` +
-                    `${theme.muted(check.label)}: ${theme.muted(check.message)}`,
+                  `  ${theme.muted('│')}       ${statusBadge(check.status)}  ` +
+                    `${theme.muted(check.label)}${theme.muted(':')} ${theme.muted(check.message)}`,
                 );
               }
             }
           }
         };
 
+        const renderGroup = (results: DiagnosticResult[], isDetected: boolean) => {
+          const categoriesOrder = ['language', 'framework', 'database', 'tool'];
+          const categoryLabels: Record<string, string> = {
+            language: 'Languages',
+            framework: 'Frameworks',
+            database: 'Databases',
+            tool: 'Tools & Utilities',
+          };
+
+          const grouped = new Map<string, DiagnosticResult[]>();
+          for (const r of results) {
+            const p = registry?.get(r.pluginName);
+            const cat = p?.category ?? 'tool';
+            const list = grouped.get(cat) ?? [];
+            list.push(r);
+            grouped.set(cat, list);
+          }
+
+          let firstCat = true;
+          for (const cat of categoriesOrder) {
+            const catResults = grouped.get(cat);
+            if (!catResults || catResults.length === 0) continue;
+
+            if (!firstCat) {
+              console.log(`  ${theme.muted('│')}`);
+            }
+            firstCat = false;
+
+            const catIcon = CATEGORY_ICONS[cat] ?? theme.muted('◆');
+            console.log(`  ${theme.muted('│')}  ${catIcon} ${chalk.bold(categoryLabels[cat])}`);
+            for (const result of catResults) {
+              renderPluginResult(result, isDetected);
+            }
+          }
+        };
+
         if (hasAnyDetected && detected.length > 0) {
-          console.log(`  ${theme.muted('│')}  ${theme.muted('── Detected in this project ──')}`);
-          for (const result of detected) renderPluginResult(result, true);
+          console.log(
+            `  ${theme.muted('│')}  ${chalk.hex('#86efac').bold('▸ Detected in this project')}`,
+          );
+          renderGroup(detected, true);
           if (others.length > 0) {
             console.log(`  ${theme.muted('│')}`);
-            console.log(`  ${theme.muted('│')}  ${theme.muted('── Other plugins ──')}`);
-            for (const result of others) renderPluginResult(result, false);
+            console.log(`  ${theme.muted('│')}  ${theme.muted('▸ Other plugins')}`);
+            renderGroup(others, false);
           }
         } else {
-          // No project context — render flat as before
-          for (const result of diagnostics) renderPluginResult(result, false);
+          renderGroup(diagnostics, false);
         }
       } else {
         console.log();
@@ -263,7 +328,7 @@ export function createDoctorCommand(
       console.log(connector());
       const installedCount = tools.filter((t) => t.installed).length;
       console.log(
-        `  ${theme.muted('│')}  ${theme.muted(`${installedCount} of ${tools.length} tools detected`)}`,
+        `  ${theme.muted('│')}  ${theme.text(`${installedCount}`)}${theme.muted('/')}${theme.text(`${tools.length}`)} ${theme.muted('tools detected')}`,
       );
       console.log(connector());
 
@@ -286,18 +351,18 @@ export function createDoctorCommand(
       for (const category of categoryOrder) {
         const categoryTools = toolsByCategory.get(category);
         if (!categoryTools) continue;
-        console.log(`  ${theme.muted('│')}  ${theme.muted(TOOL_CATEGORY_LABELS[category])}`);
+        console.log(`  ${theme.muted('│')}  ${chalk.bold(TOOL_CATEGORY_LABELS[category])}`);
         for (const tool of categoryTools) {
           const badge = tool.installed ? statusBadge('pass') : statusBadge('skip');
           const name = tool.installed ? chalk.white(tool.name) : theme.muted(tool.name);
-          const version = tool.version ? theme.muted(`v${tool.version}`) : '';
-          const notFound = !tool.installed ? theme.muted('not found') : '';
-          console.log(`  ${theme.muted('│')}    ${badge}  ${name}  ${version}${notFound}`);
+          const version = tool.version ? theme.muted(` v${tool.version}`) : '';
+          const notFound = !tool.installed ? theme.muted(' not found') : '';
+          console.log(`  ${theme.muted('│')}    ${badge}  ${name}${version}${notFound}`);
         }
         console.log(connector());
       }
 
-      // Item 4: include warn checks with suggestions, not just fail; show count in label
+      // Recommendations section
       const recommendations = diagnostics
         .flatMap((r) =>
           r.checks.map((c) => ({ ...c, pluginName: r.pluginName, displayName: r.displayName })),
@@ -312,13 +377,14 @@ export function createDoctorCommand(
         console.log(connector());
         recommendations.forEach((c, i) => {
           const badge = statusBadge(c.status);
-          const pluginTag = theme.muted(`[${c.displayName}] `);
-          const prefix = `  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${pluginTag}`;
-          const continuation = `  ${theme.muted('│')}             `;
+          const pluginTag = theme.muted(`[${c.displayName}]`);
+          console.log(`  ${theme.muted('│')}  ${theme.muted(`${i + 1}.`)} ${badge}  ${pluginTag}`);
           const lines = c.suggestion!.split('\n');
-          console.log(`${prefix}${chalk.hex('#A78BFA')(lines[0])}`);
-          for (let l = 1; l < lines.length; l++) {
-            console.log(`${continuation}${chalk.hex('#A78BFA')(lines[l])}`);
+          for (const line of lines) {
+            console.log(`  ${theme.muted('│')}      ${chalk.hex('#A78BFA')(line)}`);
+          }
+          if (i < recommendations.length - 1) {
+            console.log(`  ${theme.muted('│')}`);
           }
         });
       }

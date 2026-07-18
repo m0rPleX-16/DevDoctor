@@ -24,6 +24,7 @@ import { RepairEngine } from '../core/engine/repair-engine.js';
 import { FileAuditLogger } from '../infra/audit/audit-logger.js';
 import { loadConfig } from '../infra/config/config-loader.js';
 import { loadPlugins } from '../infra/plugins/plugin-loader.js';
+import { detectProjectContext } from '../infra/system/project-detector.js';
 import { createDiagnoseCommand } from './commands/diagnose.js';
 import { createInfoCommand } from './commands/info.js';
 import { createEnvCommand } from './commands/env.js';
@@ -85,8 +86,6 @@ async function main(): Promise<void> {
       chalk.level = 0;
       process.env.DEVDOCTOR_QUIET = '1';
     }
-    const pluginNames = registry.getNames();
-
     const baseInteractiveArgv = [...process.argv.slice(0, 2)];
     if (hasGlobalQuiet) {
       baseInteractiveArgv.push('--quiet');
@@ -95,7 +94,39 @@ async function main(): Promise<void> {
     while (true) {
       console.clear();
       showBanner();
-      const argv = await runInteractiveMenu(pluginNames, baseInteractiveArgv);
+
+      const allPlugins = registry.list();
+      const projectCtx = detectProjectContext(allPlugins);
+      if (projectCtx.detectedPlugins.size > 0) {
+        const detected = allPlugins.filter((p) => projectCtx.detectedPlugins.has(p.name));
+
+        const CATEGORY_ICONS: Record<string, string> = {
+          language: chalk.hex('#36BCF7')('◆'),
+          framework: chalk.hex('#A78BFA')('◆'),
+          database: chalk.hex('#22C55E')('◆'),
+          tool: chalk.hex('#6B7280')('◆'),
+        };
+
+        const detectedStr = detected
+          .map((p) => {
+            const icon = CATEGORY_ICONS[p.category] ?? theme.muted('◆');
+            return `${icon} ${chalk.white(p.displayName)}`;
+          })
+          .join(theme.muted('  ·  '));
+
+        console.log(`  ${theme.muted('┌─')} ${chalk.hex('#36BCF7').bold('Project Context')}`);
+        console.log(`  ${theme.muted('│')}  ${detectedStr}`);
+        console.log(
+          `  ${theme.muted('└─')} ${theme.muted(`${detected.length} plugin(s) matched via project markers`)}`,
+        );
+      } else {
+        console.log(
+          `  ${theme.muted('○')}  ${theme.muted('No project plugins detected in this directory')}`,
+        );
+      }
+      console.log();
+
+      const argv = await runInteractiveMenu(allPlugins, baseInteractiveArgv);
 
       if (!argv) {
         // User quit menu (Esc / q)
@@ -182,13 +213,39 @@ function buildProgram(
   });
 
   program.addHelpText('after', () => {
-    const available = registry
-      .list()
-      .map((p) => `${chalk.bold(p.name.padEnd(8))} ${theme.muted(p.description)}`)
-      .join('\n  ');
+    const plugins = registry.list();
+    const grouped = new Map<string, typeof plugins>();
+    for (const p of plugins) {
+      const list = grouped.get(p.category) ?? [];
+      list.push(p);
+      grouped.set(p.category, list);
+    }
+
+    const categoriesOrder = ['language', 'framework', 'database', 'tool'];
+    const sections: string[] = [];
+
+    const categoryLabels: Record<string, string> = {
+      language: 'Languages',
+      framework: 'Frameworks',
+      database: 'Databases',
+      tool: 'Tools & Utilities',
+    };
+
+    for (const cat of categoriesOrder) {
+      const catPlugins = grouped.get(cat);
+      if (!catPlugins || catPlugins.length === 0) continue;
+
+      const title = chalk.bold(categoryLabels[cat]);
+      const listStr = catPlugins
+        .map((p) => `  ${chalk.cyan(p.name.padEnd(10))} ${theme.muted(p.description)}`)
+        .join('\n');
+      sections.push(`${title}:\n${listStr}`);
+    }
+
+    const available = sections.join('\n\n');
     return `
 Available Plugins:
-  ${available}
+${available}
 
 Examples:
   ${chalk.cyan('devdoctor diagnose mysql')}

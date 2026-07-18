@@ -1,30 +1,33 @@
-# 🩺 Dev Doctor
+# Dev Doctor
+
+[![Version](https://img.shields.io/badge/version-0.5.0-blueviolet.svg)](#)
+[![Node](https://img.shields.io/badge/node-%3E%3D%2018-green.svg)](#)
+[![Platform](https://img.shields.io/badge/platform-cross--platform-lightgrey.svg)](#)
 
 > A cross-platform, plugin-based command-line utility that diagnoses, explains, and safely repairs common software development environment issues.
 
 Dev Doctor isn't just another diagnostic tool — it **teaches you** about your development environment while helping you fix it. Every check includes an educational explanation of what's happening and why it matters.
 
-> Current version: **0.4.8**
-
 ---
 
-## Features
+## Key Highlights
 
-- **Diagnose** — Run health checks on Node.js, MySQL, Git, Redis, and Python environments (or custom plugins)
-- **Explain** — Detailed root causes and educational explanations for every check
-- **Repair** — Safe, confirmation-prompted automatic repairs with rollback support and state transition diff
-- **Rollback** — Explicitly undo a prior repair with `devdoctor rollback` (last session) or `devdoctor rollback <plugin> <check>` (single check)
-- **History** — Timeline of past health check scores with trend arrows via `devdoctor history`
-- **CI-Ready** — `--yes` to auto-confirm repairs and `--dry-run` to preview without changes
-- **Audit Log** — Every repair action is recorded in `~/.devdoctor/history.json`
-- **Run History** — Every `doctor` run is recorded in `~/.devdoctor/runs.json` for trending
-- **Security Scan** — Detects dangerous PATH entries and suspected secrets in environment variables
-- **Report** — Generate system health status in terminal, JSON, or Markdown formats
-- **Configuration** — Custom configuration overlays using local `devdoctor.json` files
-- **Extensible** — Dynamic runtime plugin loading directly from filesystem directories
-- **Interactive** — Arrow-key menu when run with no arguments in a TTY, with secondary prompts for key flags (verbose, dry-run, format, etc.)
-- **Shell Completions** — Tab completion scripts for bash, zsh, fish, and PowerShell
-- **Dependency-Aware Checks** — Downstream checks skip cleanly when upstream checks fail, avoiding false negatives
+### Core Diagnostics & Intelligence
+*   **Multi-Technology Diagnostics** — Run environment health checks for Node.js, MySQL, Git, Redis, Python, Next.js, Django, Laravel, Express, FastAPI, Java, C++, C#, and PHP.
+*   **Dependency-Aware Check Runner** — Downstream checks skip cleanly when upstream checks fail to prevent noisy false positives.
+*   **Security Scanning** — Analyzes path security (e.g., world-writable folders) and scans environment variables for leaked credentials or secrets.
+*   **Educational Insights** — Provides deep-dive explanations and clear suggestion steps for every warnings/failures.
+
+### Safe Automation & Recovery
+*   **Automated Repairs** — Safely repair environment issues (e.g., provisioning `.env.local`, purging staleness caches, restoring NuGet packages, creating virtual environments) with manual verification steps.
+*   **Transaction Rollbacks** — Undo any successful fix session using `devdoctor rollback` or selectively target a single check.
+*   **Session Auditing** — Every repair attempt and result is logged to `~/.devdoctor/history.json` for security compliance.
+
+### Visual & Interactive CLI UX
+*   **Interactive Menu Welcome Loop** — captures raw keypress inputs to guide you through command routing (no flags needed!).
+*   **Smart Project Scanner** — Automatically scans your working directory on launch and highlights relevant project context.
+*   **Category-Aware Layouts** — Visually organizes commands, doctor dashboards, and selection pickers by technology type (Languages, Frameworks, Databases, Tools).
+*   **Multi-Format Reporting** — Export diagnostics as color-coded terminal readouts, machine-readable JSON, or GitHub-Flavored Markdown.
 
 ---
 
@@ -156,6 +159,15 @@ Options:
 | `git`    | Git installation, identity config, default branch, SSH key, line endings, credential helper |
 | `redis`  | Redis installation, service, port 6379, PING connectivity, memory usage              |
 | `python` | Python 3 installation, pip, virtual environment, PATH ordering conflict detection    |
+| `nextjs`  | Next.js framework configuration, version, environment variables, build cache staleness |
+| `django`  | Django settings, secret key exposure, DEBUG configuration, ALLOWED_HOSTS validation |
+| `laravel` | Laravel environment checks, application key configuration, storage path writability, vendor modules |
+| `express` | Express environment, port definition, debug hygiene check |
+| `fastapi` | FastAPI virtual environments, uvicorn installation, dotenv configuration |
+| `java`    | Java JDK runtime installation, JAVA_HOME configuration, build tool wrappers (Maven/Gradle) |
+| `cpp`     | C++ compiler availability (GCC/Clang/MSVC), build generator check (CMake/Make/Ninja) |
+| `csharp`  | C# .NET SDK installation, target frameworks, NuGet global package caching |
+| `php`     | PHP runtime installation, Composer availability, active `php.ini` verification |
 
 ### `devdoctor info`
 
@@ -427,6 +439,7 @@ src/
 │   │   ├── doctor-result.ts #     DoctorResult, HealthScore
 │   │   ├── repair.ts        #     RepairResult, VerificationResult
 │   │   └── history.ts       #     HistoryEntry (doctor run snapshots)
+│   ├── plugin-registry.ts   #   Plugin registration and lookup
 │   └── engine/
 │       ├── diagnostic-engine.ts  # Orchestrates plugin diagnostics (concurrent, per-plugin timeout)
 │       ├── repair-engine.ts      # Orchestrates repairs, verifications, rollbacks + audit logging
@@ -434,16 +447,20 @@ src/
 │       ├── snapshot-manager.ts   # Persists repair session snapshots for session rollback
 │       └── status-utils.ts       # deriveOverallStatus + applyDependencySkips│
 ├── plugins/                 # Plugin Layer
-│   ├── plugin-registry.ts   #   Plugin registration and lookup
 │   ├── node/                #   Node.js plugin
 │   ├── mysql/               #   MySQL plugin (with repair + rollback)
 │   ├── git/                 #   Git plugin
 │   ├── redis/               #   Redis plugin
-│   │   ├── index.ts
-│   │   └── checks/          #     installation, service, port, ping, memory
-│   └── python/              #   Python plugin
-│       ├── index.ts
-│       └── checks/          #     installation, pip, venv, path
+│   ├── python/              #   Python plugin
+│   ├── nextjs/              #   Next.js plugin (with repair)
+│   ├── django/              #   Django plugin
+│   ├── laravel/             #   Laravel plugin
+│   ├── express/             #   Express plugin
+│   ├── fastapi/             #   FastAPI plugin (with repair)
+│   ├── java/                #   Java plugin
+│   ├── cpp/                 #   C++ plugin
+│   ├── csharp/              #   C# plugin (with repair)
+│   └── php/                 #   PHP plugin
 │
 ├── infra/                   # Infrastructure Layer
     ├── os/
@@ -490,7 +507,7 @@ npm run format       # Format codebase using Prettier
 1. Create a directory under `src/plugins/<name>/`
 2. Implement the `Plugin` interface from `src/core/types/plugin.ts`
 3. Add diagnostic checks in a `checks/` subdirectory
-4. Register the plugin in `src/cli/index.ts` (the Composition Root)
+4. Register the plugin in `src/infra/plugins/plugin-loader.ts` under `BUILTIN_PLUGINS`
 
 ```typescript
 // src/plugins/your-plugin/index.ts

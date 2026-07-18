@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.5.0] — 2026-07-18
+
+### Added
+
+- **9 New Framework and Language Plugins** — Implemented comprehensive diagnostic plugins for **Next.js**, **Django**, **Laravel**, **Express**, **FastAPI**, **Java**, **C++**, **C#**, and **PHP** (includes PHP installation, Composer availability, and `php.ini` configuration validation checks).
+- **Smart Directory Detection** — Running `devdoctor` without arguments in an interactive terminal automatically scans the current directory and its ancestors (up to 5 levels) to detect relevant project plugins, printing the results directly below the welcome banner.
+- **Language and Framework Separation** — Enforced category metadata (`language`, `framework`, `database`, `tool`) on the `Plugin` interface. Visualized this grouping across the CLI help manual (`devdoctor --help`), the full health check report (`devdoctor doctor`), and the interactive plugin picker sub-menus.
+- **Comprehensive Unit Testing** — Added 29 isolated check-level test suites and 4 plugin-level repair/diagnose test suites, establishing robust patterns using Vitest mocks (`vi.spyOn`, `vi.stubEnv`) to verify diagnostic statuses under simulated filesystem and command outcomes.
+- **Automated Repairs** — Added self-healing repair and verification capabilities for:
+  - Next.js (`nextjs-env-local` to automatically create `.env.local` and configure `.gitignore`, and `nextjs-cache-staleness` to safely clear `.next/cache`).
+  - C# (`csharp-nuget` to run `dotnet restore` to fix missing packages cache).
+  - FastAPI (`fastapi-venv` to create a virtual environment via `python -m venv .venv` and ignore it in `.gitignore`).
+- **Interactive UI/UX Refinement** — Grouped interactive menu choices into logical sections (Primary actions, Utilities, and Exit) separated by clean, visually pleasing dividers. Highlighted selected options with custom cursor indicators and formatted sub-selection text.
+- **Polished Doctor & Diagnose CLI Formatting** — Redesigned terminal dashboards to feature a bold overall health score percentage, category icons, column-aligned check tallies, and clean, nested indentations for recommendations and diagnostics outputs.
+
+### Changed
+
+- **Refined Next.js Env Checks** — Updated `nextjs-env-local` to pass if any valid environment configuration file (`.env`, `.env.development`, `.env.production`, or `.env.local`) is present, reporting all detected files.
+- **Resilient Express Project Detection** — Rebuilt Express project identification (`isExpressProject()`) to search dependencies in `package.json`, check for `node_modules/express` directly, and fall back to static analysis scanning common project entry points for `require('express')` or `import` statements.
+
 ## [0.4.9] — 2026-07-15
 
 ### Added

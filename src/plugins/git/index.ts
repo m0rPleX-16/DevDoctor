@@ -14,6 +14,7 @@ export class GitPlugin implements Plugin {
   readonly name = 'git';
   readonly displayName = 'Git';
   readonly description = 'Diagnoses Git installation and configuration.';
+  readonly category = 'tool';
   readonly projectMarkers = ['.git', '.gitignore', '.gitattributes', '.github'];
 
   async diagnose(): Promise<DiagnosticResult> {
